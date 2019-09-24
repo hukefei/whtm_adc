@@ -2,9 +2,10 @@ import os
 import re
 import shutil
 
-file_path = r'F:\XMTM\station\14103\data\14103_0819'
+file_path = r'D:\Project\WHTM\data\21101\annotations'
 
-site_code = os.listdir(file_path)
+site_code = ['RES05', 'AZ08', 'AZ19', 'COM01', 'COM03', 'COM15', 'COM99', 'PLN01',
+             'REP01', 'RES03', 'RES04', 'RES06', 'STR02', 'STR04']
 
 for root, dirs, files in os.walk(file_path):
     for file in files:
@@ -18,9 +19,5 @@ for root, dirs, files in os.walk(file_path):
             else:
                 for code in codes_in_xml:
                     if code not in site_code:
-                        print('xml content error: {} has no {}'.format(os.path.join(root, file), code))
-                if not os.path.exists(os.path.join(root, file.replace('xml', 'JPG'))):
-                    if not os.path.exists(os.path.join(root, file.replace('xml', 'jpg'))):
-                        print('{} has no corresponding jpg file'.format(file))
-                        os.unlink(os.path.join(root, file))
+                        print('xml content error: {} has wrong code: {}'.format(os.path.join(root, file), code))
 
