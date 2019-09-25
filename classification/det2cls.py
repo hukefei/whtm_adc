@@ -1,6 +1,7 @@
 import json
 import pandas as pd
 import numpy as np
+import glob
 
 def prio_check(prio_lst, code_lst):
     idx_lst = []
@@ -14,7 +15,7 @@ def prio_check(prio_lst, code_lst):
 
 def maxconf(det_df, **kwargs):
     if len(det_df) == 0:
-        return 'C0M99'
+        return kwargs['false_name']
     else:
         filtered = det_df[det_df['score'] >= kwargs['other_thr']]
         if len(filtered) == 0:
@@ -29,7 +30,7 @@ def priority(det_df, **kwargs):
     assert 'prio_file' in kwargs.keys(), 'Must input a priority file'
     priority_file = kwargs['prio_file']
     if len(det_df) == 0:
-        return 'COM99'
+        return kwargs['false_name']
     else:
         filtered = det_df[det_df['score'] >= kwargs['other_thr']]
         if len(filtered) == 0:
@@ -50,7 +51,7 @@ def maxconf_priority(det_df, **kwargs):
     prio_file = kwargs['prio_file']
 
     if len(det_df) == 0:
-        return 'COM99'
+        return kwargs['false_name']
     else:
         filtered = det_df[det_df['score'] >= kwargs['other_thr']]
         if len(filtered) == 0:
@@ -68,12 +69,14 @@ def maxconf_priority(det_df, **kwargs):
 
 
 def det2cls(json_file,
+            test_images_dir,
             false_thr=0.05,
             other_thr=0.5,
             other_name='other',
             rule=0,
             prio_file=None,
             prio_weight=0.9,
+            false_name = 'COM99',
             output='classification_result.xlsx'):
     rule_dict = {0: 'Max Confidence',
                  1: 'Priority Only',
@@ -94,7 +97,8 @@ def det2cls(json_file,
         json_dict = json.load(f)
 
     det_df = pd.DataFrame(json_dict)
-    img_lst = list(det_df['name'].unique())
+    #img_lst = list(det_df['name'].unique())
+    img_lst = glob.glob(test_images_dir + r'\*.jpg')
 
     filtered_df = det_df[det_df['score'] > false_thr]
 
@@ -105,7 +109,8 @@ def det2cls(json_file,
                                       prio_file=prio_file,
                                       prio_weight=prio_weight,
                                       other_thr=other_thr,
-                                      other_name=other_name)
+                                      other_name=other_name,
+                                      false_name = false_name)
         cls_result_lst.append({'image name': img_name, 'pred code': cls_result})
     cls_df = pd.DataFrame(cls_result_lst)
     cls_df.to_excel(output)
@@ -114,5 +119,6 @@ def det2cls(json_file,
 if __name__ == '__main__':
     result_json = r'C:\Users\huker\Desktop\project\submit\test\result.json'
     prio_file = r'C:\Users\huker\Desktop\project\submit\test\cloth_defect_prio.xlsx'
+    test_images = r''
 
-    det2cls(result_json, false_thr=0.4, rule=1, prio_file=prio_file)
+    det2cls(result_json, test_images, false_thr=0.4, rule=1, prio_file=prio_file)

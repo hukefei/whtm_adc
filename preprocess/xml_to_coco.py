@@ -7,11 +7,13 @@ import shutil
 import numpy as np
 import xml.etree.ElementTree as ET
 import random
+
 random.seed(54321)
 
 START_IMAGE_ID = 1
 START_BOUNDING_BOX_ID = 1
-PRE_DEFINE_CATEGORIES = {}
+PRE_DEFINE_CATEGORIES = {'COM01': 1, 'RES05': 2, 'COM15': 3, 'AZ08': 4, 'COM03': 5, 'REP01': 6, 'STR04': 7,
+                         'RES03': 8, 'RES04': 9, 'AZ19': 10, 'RES06': 11, 'PLN01': 12, 'STR02': 13}
 
 
 class MyEncoder(json.JSONEncoder):
@@ -29,7 +31,7 @@ class MyEncoder(json.JSONEncoder):
 def split_dataset(xml_dir, train_percent):
     total_xml = os.listdir(xml_dir)
     num = len(total_xml)
-    train = random.sample(range(num), int(num*train_percent))
+    train = random.sample(range(num), int(num * train_percent))
     ftrain, ftest = [], []
     for i in range(num):
         name = total_xml[i][:-4] + '\n'
@@ -48,9 +50,9 @@ def get(root, name):
 def get_and_check(root, name, length):
     vars = root.findall(name)
     if len(vars) == 0:
-        raise NotImplementedError('Can not find %s in %s.' %(name, root.tag))
+        raise NotImplementedError('Can not find %s in %s.' % (name, root.tag))
     if length > 0 and len(vars) != length:
-        raise NotImplementedError('The size of %s is supposed to be %d, but is %d.' %(name, length, len(vars)))
+        raise NotImplementedError('The size of %s is supposed to be %d, but is %d.' % (name, length, len(vars)))
     if length == 1:
         vars = vars[0]
     return vars
@@ -62,26 +64,21 @@ def convert(name_list, xml_dir, img_dir, save_img, save_json):
     bnd_id = START_BOUNDING_BOX_ID
     image_id = START_IMAGE_ID
 
-    id_count = 1
     for name in name_list:
         name = name.strip()
         print("Processing %s" % name)
-        xml_f = os.path.join(xml_dir, name+'.xml')
+        xml_f = os.path.join(xml_dir, name + '.xml')
         tree = ET.parse(xml_f)
         root = tree.getroot()
 
         size = get_and_check(root, 'size', 1)
         width = int(get_and_check(size, 'width', 1).text)
         height = int(get_and_check(size, 'height', 1).text)
-        image = {'file_name': name+'.jpg', 'height': height, 'width': width, 'id': image_id}
+        image = {'file_name': name + '.jpg', 'height': height, 'width': width, 'id': image_id}
         json_dict['images'].append(image)
-
 
         for obj in get(root, 'object'):
             category = get_and_check(obj, 'name', 1).text
-            if category not in categories.keys():
-                categories[category] = id_count
-                id_count += 1
             category_id = categories[category]
 
             bndbox = get_and_check(obj, 'bndbox', 1)
@@ -89,17 +86,17 @@ def convert(name_list, xml_dir, img_dir, save_img, save_json):
             ymin = float(get_and_check(bndbox, 'ymin', 1).text)
             xmax = float(get_and_check(bndbox, 'xmax', 1).text)
             ymax = float(get_and_check(bndbox, 'ymax', 1).text)
-            assert(xmax > xmin)
-            assert(ymax > ymin)
+            assert (xmax > xmin)
+            assert (ymax > ymin)
             o_width = abs(xmax - xmin)
             o_height = abs(ymax - ymin)
-            ann = {'area': o_width*o_height, 'iscrowd': 0, 'image_id': image_id,
+            ann = {'area': o_width * o_height, 'iscrowd': 0, 'image_id': image_id,
                    'bbox': [xmin, ymin, o_width, o_height],
                    'category_id': category_id, 'id': bnd_id, 'ignore': 0,
                    'segmentation': []}
             json_dict['annotations'].append(ann)
             bnd_id += 1
-        shutil.copy(os.path.join(img_dir, name+'.jpg'), os.path.join(save_img, name+'.jpg'))
+        shutil.copy(os.path.join(img_dir, name + '.jpg'), os.path.join(save_img, name + '.jpg'))
         image_id += 1
     """
     for cate, cid in categories.items():
@@ -133,5 +130,3 @@ if __name__ == '__main__':
     train, test = split_dataset(xml_dir, 0.8)
     convert(train, xml_dir, img_dir, train_img, train_json)
     convert(test, xml_dir, img_dir, test_img, test_json)
-
-

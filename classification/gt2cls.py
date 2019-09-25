@@ -1,6 +1,8 @@
 import json
 import pandas as pd
 import numpy as np
+import os
+
 
 def prio_check(prio_lst, code_lst):
     idx_lst = []
@@ -11,9 +13,11 @@ def prio_check(prio_lst, code_lst):
     final_code = prio_lst[min(idx_lst)][0]
     return final_code
 
+
 def gt2cls(json_file,
+           test_images,
            prio_file,
-           output = 'ground_truth_result.xlsx'):
+           output='ground_truth_result.xlsx'):
     with open(json_file) as f:
         json_dict = json.load(f)
 
@@ -31,6 +35,7 @@ def gt2cls(json_file,
     annos = pd.DataFrame(json_dict['annotations'])
 
     gt_result = []
+    json_img_lst = []
     for img in img_lst:
         img_id = img_dict[img]
         annos_per_img = annos[annos['image_id'] == img_id]
@@ -39,11 +44,20 @@ def gt2cls(json_file,
         category_lst = list(annos_per_img['category_id'].values)
         gt_code = prio_check(prio_lst, category_lst)
         gt_result.append({'image name': img, 'true code': gt_code})
+        json_img_lst.append(img)
+
+    # add normal test images classification result
+    for root, _, files in os.walk(test_images):
+        for file in files:
+            if (file.endswith('jpg') or file.endswith('JPG')) and (file not in img_lst):
+                gt_result.append({'image name': file, 'true code': 'COM99'})
 
     gt_df = pd.DataFrame(gt_result)
     gt_df.to_excel(output)
 
+
 if __name__ == '__main__':
     gt_json = r'D:\Project\WHTM\data\21101\train_test_data'
     prio_file = r'D:\Project\WHTM\data\21101\train_test_data'
-    gt2cls(gt_json, prio_file)
+    test_images = r''
+    gt2cls(gt_json, test_images, prio_file)

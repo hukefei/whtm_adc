@@ -16,8 +16,9 @@ WIDTH = 2448
 #                   39, 51, 27, 83, 57, 75, 51, 37, 57, 60])
 
 # according defects count
-p = 1 / np.array([1844, 555, 189, 465, 371, 808, 317, 1058, 79, 2190,
-                  2313, 188, 641])
+# code: COM01, RES05, COM15, COM99, AZ08, COM03, REP01, STR04, RES03, RES04, AZ19, RES06, PLN01, STR02
+
+p = 1 / np.array([2313, 2190, 1844, 1058, 641, 465 * 100, 555, 317, 808, 188 * 100, 371, 189, 79])
 
 
 def get_gt_boxes(json_file):
@@ -46,48 +47,49 @@ def get_gt_boxes(json_file):
     return len(gt_dict), gt_dict, gt_lst
 
 
-
 def cutout(gt_dict,
            gt_lst,
            defect_dir,
            normal_dir,
            save_dir,
            max_per_img=3,
-           mix_ratio=0.):
-
+           mix_ratio=0.,
+           repeated=1):
     cate_lst = list(map(int, np.array(gt_lst)[..., 1]))
-    p_lst = [p[cate-1] for cate in cate_lst]
+    p_lst = [p[cate - 1] for cate in cate_lst]
 
     normal_imgs = os.listdir(normal_dir)
-    for i, img_name in enumerate(normal_imgs):
-        print(i, img_name)
-        normal_img = cv2.imread(os.path.join(normal_dir, img_name))
-        defects = random.choices(gt_lst, weights=p_lst,
-                                k=random.randint(1, max_per_img))
-        # first big, then small, to prevent big defects from covering small one
-        defects = sorted(defects, key=(lambda x: x[-1]*x[-2]), reverse=True)
-        if defects[0][-1]*defects[0][-2] > HEIGHT * WIDTH / 4:
-            defects = [defects[0]]
+    for epoch in range(repeated):
+        for i, img_name in enumerate(normal_imgs):
+            img_name_epoch = str(epoch) + '_' + img_name
+            print(i, img_name_epoch)
+            normal_img = cv2.imread(os.path.join(normal_dir, img_name))
+            defects = random.choices(gt_lst, weights=p_lst,
+                                     k=random.randint(1, max_per_img))
+            # first big, then small, to prevent big defects from covering small one
+            defects = sorted(defects, key=(lambda x: x[-1] * x[-2]), reverse=True)
+            if defects[0][-1] * defects[0][-2] > HEIGHT * WIDTH / 4:
+                defects = [defects[0]]
 
-        total_bbox = []
-        for det in defects:
-            defect_img = cv2.imread(os.path.join(defect_dir, det[0]))
-            category = det[1]
-            x, y, w, h = list(map(int, det[2:]))
-            defect = defect_img[y:y+h, x:x+w, :]
+            total_bbox = []
+            for det in defects:
+                defect_img = cv2.imread(os.path.join(defect_dir, det[0]))
+                category = det[1]
+                x, y, w, h = list(map(int, det[2:]))
+                defect = defect_img[y:y + h, x:x + w, :]
 
-            xmin = random.randint(0, WIDTH - w)
-            ymin = random.randint(0, HEIGHT - h)
-            xmax = xmin + w
-            ymax = ymin + h
-            normal_img[ymin:ymax, xmin:xmax, :] = \
-                mix_ratio * normal_img[ymin:ymax, xmin:xmax, :] \
-                + (1 - mix_ratio) * defect
+                xmin = random.randint(0, WIDTH - w)
+                ymin = random.randint(0, HEIGHT - h)
+                xmax = xmin + w
+                ymax = ymin + h
+                normal_img[ymin:ymax, xmin:xmax, :] = \
+                    mix_ratio * normal_img[ymin:ymax, xmin:xmax, :] \
+                    + (1 - mix_ratio) * defect
 
-            total_bbox.append([category] + [xmin,ymin,w,h])
-        gt_dict[img_name] = total_bbox
+                total_bbox.append([category] + [xmin, ymin, w, h])
+            gt_dict[img_name_epoch] = total_bbox
 
-        cv2.imwrite(os.path.join(save_dir, img_name), normal_img)
+            cv2.imwrite(os.path.join(save_dir, img_name_epoch), normal_img)
     return gt_dict
 
 
@@ -95,18 +97,18 @@ def write_new_json(gt_dict, new_json):
     json_dict = {"images": [], "type": "instances", "annotations": [], "categories": []}
     bnd_id = 1
     for i, (name, anno) in enumerate(gt_dict.items()):
-        img_id = i+1
+        img_id = i + 1
         image = {'file_name': name, 'height': HEIGHT, 'width': WIDTH, 'id': img_id}
         json_dict['images'].append(image)
 
         for box in anno:
             ann = {'bbox': box[1:], 'category_id': box[0], 'image_id': img_id,
-                   'iscrowd': 0, 'ignore': 0, 'area': box[3]*box[4], 'segmentation': [], 'id': bnd_id}
+                   'iscrowd': 0, 'ignore': 0, 'area': box[3] * box[4], 'segmentation': [], 'id': bnd_id}
             json_dict['annotations'].append(ann)
             bnd_id += 1
 
     for i in range(NUM_CLASSES):
-        cat = {'supercategory': 'none', 'id': i+1, 'name': str(i+1)}
+        cat = {'supercategory': 'none', 'id': i + 1, 'name': str(i + 1)}
         json_dict['categories'].append(cat)
 
     with open(new_json, 'w') as f:
@@ -123,8 +125,8 @@ def write_xmls(foldername, gt_dict, num_raw_imgs, save_dir):
         localImgPath = os.path.join(foldername, filename)
         XMLWriter = PascalVocWriter(foldername, filename, imgSize, localImgPath)
         for box in annotations[i]:
-            XMLWriter.addBndBox(box[1], box[2], box[1]+box[3], box[2]+box[4], str(box[0]))
-        XMLWriter.save(os.path.join(save_dir, filename[:-4]+'.xml'))
+            XMLWriter.addBndBox(box[1], box[2], box[1] + box[3], box[2] + box[4], str(box[0]))
+        XMLWriter.save(os.path.join(save_dir, filename[:-4] + '.xml'))
 
 
 if __name__ == '__main__':
@@ -132,7 +134,9 @@ if __name__ == '__main__':
     defect_dir = r'D:\Project\WHTM\data\21101\train_test_data\train'
     normal_dir = r'D:\Project\WHTM\data\21101\COM99'
     new_json = r'D:\Project\WHTM\data\21101\train_test_data\cutout_train.json'
-    save_dir = r'D:\Project\WHTM\data\21101\cutout'
+    save_dir = r'D:\Project\WHTM\data\21101\train_test_data\cutout'
+    xml_dir = r'D:\Project\WHTM\data\21101\CUTOUT_xml'
+
     if os.path.exists(save_dir):
         shutil.rmtree(save_dir)
     os.makedirs(save_dir)
@@ -140,16 +144,14 @@ if __name__ == '__main__':
     num_raw_imgs, gt_dict, gt_lst = get_gt_boxes(gt_json)
     print("\nStarting cutout...")
     gt_dict = cutout(gt_dict, gt_lst, defect_dir,
-                     normal_dir, save_dir, max_per_img=3, mix_ratio=0.)
+                     normal_dir, save_dir, max_per_img=3, mix_ratio=0., repeated=4)
 
     print("\nWriting new train json...")
     write_new_json(gt_dict, new_json)
 
     print("\nWriting cutout xmls...")
-    xml_dir = r'D:\Project\WHTM\data\21101\CUTOUT_xml\cutout_xmls'
+
     if os.path.exists(xml_dir):
         shutil.rmtree(xml_dir)
     os.makedirs(xml_dir)
     write_xmls(save_dir, gt_dict, num_raw_imgs, xml_dir)
-
-
