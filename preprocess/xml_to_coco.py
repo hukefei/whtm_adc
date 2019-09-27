@@ -7,13 +7,12 @@ import shutil
 import numpy as np
 import xml.etree.ElementTree as ET
 import random
+from classification.Code_dictionary import CodeDictionary
 
 random.seed(54321)
 
 START_IMAGE_ID = 1
 START_BOUNDING_BOX_ID = 1
-PRE_DEFINE_CATEGORIES = {'COM01': 1, 'RES05': 2, 'COM15': 3, 'AZ08': 4, 'COM03': 5, 'REP01': 6, 'STR04': 7,
-                         'RES03': 8, 'RES04': 9, 'AZ19': 10, 'RES06': 11, 'PLN01': 12, 'STR02': 13}
 
 
 class MyEncoder(json.JSONEncoder):
@@ -58,9 +57,9 @@ def get_and_check(root, name, length):
     return vars
 
 
-def convert(name_list, xml_dir, img_dir, save_img, save_json):
+def convert(name_list, xml_dir, img_dir, save_img, save_json, code_dictionary):
     json_dict = {"images": [], "type": "instances", "annotations": [], "categories": []}
-    categories = PRE_DEFINE_CATEGORIES
+    categories = code_dictionary.code_dict
     bnd_id = START_BOUNDING_BOX_ID
     image_id = START_IMAGE_ID
 
@@ -118,6 +117,9 @@ if __name__ == '__main__':
     img_dir = r'D:\Project\WHTM\data\21101\label_data'
 
     save_dir = r'D:\Project\WHTM\data\21101\train_test_data'
+    code_file = r'D:\Project\WHTM\code\21101code.xlsx'
+    code = CodeDictionary(code_file)
+
     train_json = os.path.join(save_dir, 'train.json')
     test_json = os.path.join(save_dir, 'test.json')
     train_img = os.path.join(save_dir, 'train')
@@ -128,5 +130,5 @@ if __name__ == '__main__':
         os.makedirs(dir)
 
     train, test = split_dataset(xml_dir, 0.8)
-    convert(train, xml_dir, img_dir, train_img, train_json)
-    convert(test, xml_dir, img_dir, test_img, test_json)
+    convert(train, xml_dir, img_dir, train_img, train_json, code)
+    convert(test, xml_dir, img_dir, test_img, test_json, code)

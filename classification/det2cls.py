@@ -2,6 +2,9 @@ import json
 import pandas as pd
 import numpy as np
 import glob
+from classification.Code_dictionary import CodeDictionary
+import os
+
 
 def prio_check(prio_lst, code_lst):
     idx_lst = []
@@ -57,7 +60,7 @@ def maxconf_priority(det_df, **kwargs):
         if len(filtered) == 0:
             return kwargs['other_name']
 
-        Max_conf = max(det_df['score'].values)
+        Max_conf = max(filtered['score'].values)
         prio_thr = Max_conf * prio_weight
         filtered = filtered[filtered['score'] >= prio_thr]
 
@@ -68,22 +71,78 @@ def maxconf_priority(det_df, **kwargs):
         return final_code
 
 
+def default_rule(det_df, **kwargs):
+    assert 'prio_weight' in kwargs.keys(), 'Must input priority weight'
+    assert 'prio_file' in kwargs.keys(), 'Must input priority file'
+
+    prio_weight = kwargs['prio_weight']
+    prio_file = kwargs['prio_file']
+
+    if len(det_df) == 0:
+        return kwargs['false_name']
+    else:
+        filtered = det_df[det_df['score'] >= kwargs['other_thr']]
+        if len(filtered) == 0:
+            return kwargs['other_name']
+
+        df_res04 = filtered[filtered['category'] == 'RES04']
+        df_res05 = filtered[filtered['category'] == 'RES05']
+        for idx, row in df_res04.iterrows():
+            bbox1 = row['bbox']
+            count = 0
+            for idx2, row2 in df_res05.iterrows():
+                bbox2 = row2['bbox']
+                if check_in(bbox1, bbox2):
+                    count += 1
+            if count == 2:
+                filtered.drop(idx, inplace=True)
+                print('Drop 1 RES04 bbox')
+
+        Max_conf = max(filtered['score'].values)
+        prio_thr = Max_conf * prio_weight
+        filtered = filtered[filtered['score'] >= prio_thr]
+
+        prio = pd.read_excel(prio_file)
+        prio_lst = list(prio.values)
+        final_code = prio_check(prio_lst, list(filtered['category'].values))
+
+        return final_code
+
+
+def check_in(bbox1, bbox2, thr=0.8):
+    bbox2_size = (bbox2[2] - bbox2[0]) * (bbox2[3] - bbox2[1])
+    inner = (max(bbox1[0], bbox2[0]), max(bbox1[1], bbox2[1]), min(bbox1[2], bbox2[2]), min(bbox1[3], bbox2[3]))
+    inner_w = inner[2] - inner[0]
+    inner_h = inner[3] - inner[1]
+    if inner_w <= 0 or inner_h <= 0:
+        return False
+    else:
+        inner_size = inner_h * inner_w
+        if inner_size / bbox2_size > thr:
+            return True
+        else:
+            return False
+
+
 def det2cls(json_file,
             test_images_dir,
+            code_dict,
             false_thr=0.05,
             other_thr=0.5,
             other_name='other',
             rule=0,
             prio_file=None,
             prio_weight=0.9,
-            false_name = 'COM99',
+            false_name='COM99',
             output='classification_result.xlsx'):
     rule_dict = {0: 'Max Confidence',
                  1: 'Priority Only',
-                 2: 'Max Confidence and Priority'}
+                 2: 'Max Confidence and Priority',
+                 3: 'Default'}
     rule_func = {0: maxconf,
                  1: priority,
-                 2: maxconf_priority}
+                 2: maxconf_priority,
+                 3: default_rule}
     chosen_rule_func = rule_func[rule]
     print('Bbox score less than {} is judged as {}'.format(other_thr, other_name))
     print('Bbox score less than {} is judged as COM99'.format(false_thr))
@@ -97,8 +156,9 @@ def det2cls(json_file,
         json_dict = json.load(f)
 
     det_df = pd.DataFrame(json_dict)
-    #img_lst = list(det_df['name'].unique())
-    img_lst = glob.glob(test_images_dir + r'\*.jpg')
+    det_df['category'] = code_dict.id2code(list(det_df['category'].values))
+    # img_lst = list(det_df['name'].unique())
+    img_lst = os.listdir(test_images_dir)
 
     filtered_df = det_df[det_df['score'] > false_thr]
 
@@ -110,15 +170,17 @@ def det2cls(json_file,
                                       prio_weight=prio_weight,
                                       other_thr=other_thr,
                                       other_name=other_name,
-                                      false_name = false_name)
+                                      false_name=false_name)
         cls_result_lst.append({'image name': img_name, 'pred code': cls_result})
     cls_df = pd.DataFrame(cls_result_lst)
     cls_df.to_excel(output)
 
 
 if __name__ == '__main__':
-    result_json = r'C:\Users\huker\Desktop\project\submit\test\result.json'
-    prio_file = r'C:\Users\huker\Desktop\project\submit\test\cloth_defect_prio.xlsx'
-    test_images = r''
+    result_json = r'D:\Project\WHTM\result\21101\21101_at_results.json'
+    prio_file = r'D:\Project\WHTM\data\21101\21101_prio.xlsx'
+    test_images = r'D:\Project\WHTM\data\21101\train_test_data\test'
+    code_file = r'D:\Project\WHTM\code\21101code.xlsx'
+    code = CodeDictionary(code_file)
 
-    det2cls(result_json, test_images, false_thr=0.4, rule=1, prio_file=prio_file)
+    det2cls(result_json, test_images, code, false_thr=0.05, other_thr=0, rule=3, prio_file=prio_file, prio_weight=0.5)

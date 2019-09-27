@@ -2,30 +2,8 @@ import json
 import pandas as pd
 import numpy as np
 import os
+from classification.Code_dictionary import CodeDictionary
 
-class code_dict():
-    def __init__(self, code_file):
-        self.code_df = pd.read_excel(code_file)
-        assert 'CODE' in self.code_df.columns, 'CODE should be in the code file'
-        assert 'ID' in self.code_df.columns, 'ID should be in the code file'
-
-    def code2id(self, code_lst):
-        if isinstance(code_lst, str):
-            return self.code_df.loc[self.code_df['CODE'] == code_lst, 'ID'].values[0]
-        if isinstance(code_lst, list):
-            id_lst = []
-            for code in code_lst:
-                id_lst.append(self.code_df.loc[self.code_df['CODE'] == code, 'ID'].values[0])
-            return id_lst
-
-    def id2code(self, id_lst):
-        if isinstance(id_lst, int):
-            return self.code_df.loc[self.code_df['ID'] == id_lst, 'CODE'].values[0]
-        if isinstance(id_lst, list):
-            code_lst = []
-            for id in id_lst:
-                code_lst.append(self.code_df.loc[self.code_df['ID'] == id, 'CODE'].values[0])
-            return code_lst
 
 def prio_check(prio_lst, code_lst):
     idx_lst = []
@@ -85,6 +63,6 @@ if __name__ == '__main__':
     gt_json = r'D:\Project\WHTM\data\21101\train_test_data\test.json'
     prio_file = r'D:\Project\WHTM\data\21101\21101_prio.xlsx'
     test_images = r'D:\Project\WHTM\data\21101\train_test_data\test'
-    code_file = r'D:\Project\WHTM\data\21101\21101_code_dict.xlsx'
-    code = code_dict(code_file)
+    code_file = r'D:\Project\WHTM\code\21101code.xlsx'
+    code = CodeDictionary(code_file)
     gt2cls(gt_json, test_images, prio_file, code)
