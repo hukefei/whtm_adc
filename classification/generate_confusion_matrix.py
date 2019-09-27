@@ -1,6 +1,6 @@
 import pandas as pd
 from sklearn.metrics import confusion_matrix
-from classification.Code_dictionary import CodeDictionary
+from utils.Code_dictionary import CodeDictionary
 import copy
 import numpy as np
 

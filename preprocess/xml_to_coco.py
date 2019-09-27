@@ -7,7 +7,7 @@ import shutil
 import numpy as np
 import xml.etree.ElementTree as ET
 import random
-from classification.Code_dictionary import CodeDictionary
+from utils.Code_dictionary import CodeDictionary
 
 random.seed(54321)
 
