@@ -17,25 +17,29 @@ def wrap_confusion_matrix(cm_df):
 
 def generate_confusion_matrix(det_result_file,
                               gt_result_file,
-                              code_dict,
+                              labels,
                               output='confusion_matrix.xlsx',
                               code_weight=None):
     det_df = pd.read_excel(det_result_file)
     gt_df = pd.read_excel(gt_result_file)
     merged_df = pd.merge(det_df, gt_df, on='image name')
 
-    merged_df.dropna(inplace=True)
+    merged_df.loc[pd.isnull(merged_df['true code']), 'true code'] = merged_df['pred code']
+    merged_df.drop(merged_df[merged_df['true code'] == 1].index, axis=0, inplace=True)
     print('{} images merged \n{} images det \n{} images det'.format(len(merged_df), len(det_df), len(gt_df)))
     y_pred = list(merged_df['pred code'].values.astype(str))
     y_true = list(merged_df['true code'].values.astype(str))
-    labels = code_dict.code_list
+    #labels = code_dict.code_list
+    #labels.remove('QS')
+    #labels.append('RES05')
+    #labels.append('RES04')
 
     cm = confusion_matrix(y_true, y_pred, labels)
     cm_df = pd.DataFrame(cm, index=labels, columns=labels)
     if code_weight is not None:
         code_weight = np.array(code_weight)*1000
         print('output balanced confusion matrix')
-        assert len(code_weight) == len(code_dict.code_list)
+        assert len(code_weight) == len(labels)
         cm_df_balanced = copy.deepcopy(cm_df)
         for i in range(len(code_weight)):
             sum = cm_df_balanced.iloc[i, :].sum()
@@ -51,10 +55,13 @@ def generate_confusion_matrix(det_result_file,
 
 
 if __name__ == '__main__':
-    det_result = r'D:\Project\WHTM\result\21101\bt1\classification_result.xlsx'
-    gt_result = r'D:\Project\WHTM\result\21101\bt1\blindtest_21101_true.xlsx'
+    det_result = r'D:\Project\WHTM\result\21101\bt2\blindtest2_21101_operator.xlsx'
+    gt_result = r'D:\Project\WHTM\result\21101\bt2\TM_CHECKED.xlsx'
     code_file = r'D:\Project\WHTM\code\21101code.xlsx'
 
     code = CodeDictionary(code_file)
-    generate_confusion_matrix(det_result, gt_result, code, code_weight=[2.6, 6.4, 3.2, 0.23, 0.078, 0.066, 0.17,
-                                                                        0.09, 0.17, 0.043, 0.053, 0.053, 0.02, 0.68])
+    labels = code.code_list
+    labels.remove('QS')
+    labels.append('RES05')
+    labels.append('RES04')
+    generate_confusion_matrix(det_result, gt_result, labels)

@@ -10,9 +10,6 @@ import os
 import cv2
 
 
-
-
-
 def cut_defect(images, annotations, output_dir):
     for root_dir, _, files in os.walk(images):
         for file in files:
@@ -31,10 +28,12 @@ def cut_defect(images, annotations, output_dir):
                 save_dir_code = os.path.join(output_dir, category)
                 if not os.path.exists(save_dir_code):
                     os.makedirs(save_dir_code)
-                cut_name = file[:-4] + category + str(start_id) + '.jpg'
+                cut_name = '__'.join(
+                    [file[:-4], category, str(bbox[0]), str(bbox[1]), str(bbox[2]), str(bbox[3])]) + '.jpg'
                 start_id += 1
                 cut_path = os.path.join(save_dir_code, cut_name)
                 cv2.imwrite(cut_path, cut)
+
 
 if __name__ == '__main__':
     defect_dir = r'D:\Project\WHTM\data\21101\label_data'
@@ -45,5 +44,3 @@ if __name__ == '__main__':
 
     IMG_WIDTH = 2448
     IMG_HEIGHT = 2056
-
-

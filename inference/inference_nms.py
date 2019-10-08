@@ -6,7 +6,7 @@ import os, glob
 import json
 import shutil
 import numpy as np
-from mmdet.apis import inference_detector, init_detector
+from utils.Code_dictionary import CodeDictionary
 import pickle
 
 
@@ -81,7 +81,8 @@ def model_test(pkl_file,
     output_bboxes = []
     json_dict = []
     for i, result in enumerate(results):#loop for images
-        img_name = imgs[i].split('/')[-1]
+        img_path = imgs[i].replace('\\', '/')
+        img_name = img_path.split('/')[-1]
         print(i, img_name)
 
         total_bbox = []
@@ -104,30 +105,35 @@ def model_test(pkl_file,
     return output_bboxes, json_dict
 
 
-def show_and_save_images(img_path, bboxes, out_dir=None):
+def show_and_save_images(img_path, bboxes, code_dict, out_dir=None):
     img = cv2.imread(img_path)
+    img_path = img_path.replace('\\', '/')
     img_name = img_path.split('/')[-1]
     for bbox in bboxes:
         bbox_int = bbox[:4].astype(np.int32)
         left_top = (bbox_int[0], bbox_int[1])
         right_bottom = (bbox_int[2], bbox_int[3])
-        label_txt = str(int(bbox[5])) + ': ' + str(round(bbox[4], 2))
-        cv2.rectangle(img, left_top, right_bottom, (0, 255, 0), 1)
-        cv2.putText(img, label_txt, (bbox_int[0], max(bbox_int[1] - 2, 0)), cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 255, 0))
+        code = code_dict.id2code(int(bbox[5]))
+        label_txt = code + ': ' + str(round(bbox[4], 2))
+        cv2.rectangle(img, left_top, right_bottom, (0, 0, 255), 1)
+        cv2.putText(img, label_txt, (bbox_int[0], max(bbox_int[1] - 2, 0)), cv2.FONT_HERSHEY_COMPLEX, 1, (0, 0, 255), 2)
 
     if out_dir is not None:
         cv2.imwrite(os.path.join(out_dir, img_name), img)
 
 
 if __name__ == '__main__':
-    imgs = glob.glob('/data/sdv1/GD/data/guangdong1_round1_testA_20190818/*.jpg')
-    pkl_file = r'/data/sdv1/GD/code/cloth_defect_detection/inference/result.pkl'
+    imgs = glob.glob(r'E:\whtm\21101bt_part2_2000\*.jpg')
+    pkl_file = r'D:\Project\WHTM\result\21101\bt2\21101_bt2_result_v2.pkl'
     output_bboxes, json_dict = model_test(pkl_file,
-                                          score_thr=0.1)
-    with open('results_0821.json', 'w') as f:
+                                          score_thr=0.05)
+    with open(r'21101_bt2_result_v2.json', 'w') as f:
         json.dump(json_dict, f, indent=4)
 
-    out_dir = 'test_nms'
+    code_file = r'D:\Project\WHTM\code\21101code.xlsx'
+    code = CodeDictionary(code_file)
+
+    out_dir = None
     if out_dir is not None:
         if os.path.exists(out_dir):
             shutil.rmtree(out_dir)
@@ -135,4 +141,4 @@ if __name__ == '__main__':
         for i in range(len(imgs)):
             img_path = imgs[i]
             bboxes = output_bboxes[i]
-            show_and_save_images(img_path, bboxes, out_dir)
+            show_and_save_images(img_path, bboxes, code, out_dir)

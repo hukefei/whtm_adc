@@ -129,6 +129,6 @@ if __name__ == '__main__':
             shutil.rmtree(dir)
         os.makedirs(dir)
 
-    train, test = split_dataset(xml_dir, 0.8)
+    train, test = split_dataset(xml_dir, 0.9)
     convert(train, xml_dir, img_dir, train_img, train_json, code)
     convert(test, xml_dir, img_dir, test_img, test_json, code)

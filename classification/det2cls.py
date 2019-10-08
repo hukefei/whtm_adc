@@ -14,6 +14,15 @@ def prio_check(prio_lst, code_lst):
     return final_code
 
 
+def filter_code(df, code, thr, replace=None):
+    check_code = df[(df['category'] == code) & (df['score'] < thr)]
+    if replace is None:
+        df = df.drop(index=check_code.index)
+    else:
+        df.loc[check_code.index, 'category'] = replace
+    return df
+
+
 def maxconf(det_df, **kwargs):
     if len(det_df) == 0:
         return kwargs['false_name']
@@ -40,7 +49,6 @@ def priority(det_df, **kwargs):
         prio = pd.read_excel(priority_file)
         prio_lst = list(prio.values)
         final_code = prio_check(prio_lst, list(filtered['category'].values))
-
         return final_code
 
 
@@ -69,6 +77,7 @@ def maxconf_priority(det_df, **kwargs):
         return final_code
 
 
+'''
 def default_rule(det_df, **kwargs):
     assert 'prio_weight' in kwargs.keys(), 'Must input priority weight'
     assert 'prio_file' in kwargs.keys(), 'Must input priority file'
@@ -105,6 +114,54 @@ def default_rule(det_df, **kwargs):
         final_code = prio_check(prio_lst, list(filtered['category'].values))
 
         return final_code
+'''
+
+
+def default_rule(det_df, **kwargs):
+    assert 'prio_weight' in kwargs.keys(), 'Must input priority weight'
+    assert 'prio_file' in kwargs.keys(), 'Must input priority file'
+
+    prio_weight = kwargs['prio_weight']
+    prio_file = kwargs['prio_file']
+
+    if len(det_df) == 0:
+        return kwargs['false_name'], 1
+    else:
+        filtered = det_df[det_df['score'] >= kwargs['other_thr']]
+        if len(filtered) == 0:
+            return kwargs['other_name']
+
+        df_res04 = filtered[filtered['category'] == 'QS']
+        if len(df_res04) >= 3:
+            filtered.loc[filtered['category'] == 'QS', 'category'] = 'RES04'
+        else:
+            filtered.loc[filtered['category'] == 'QS', 'category'] = 'RES05'
+
+        # delect redundant RES06 code
+        # delect redundant RES03 code
+        filtered = filter_code(filtered, 'RES06', 0.7)
+        #filtered = filter_code(filtered, 'RES03', 0.3)
+        filtered = filter_code(filtered, 'RES03', 0.5, 'RES05')
+        filtered = filter_code(filtered, 'AZ08', 0.6)
+        filtered = filter_code(filtered, 'STR02', 0.6)
+        filtered = filter_code(filtered, 'STR04', 0.8, 'COM01')
+        filtered = filter_code(filtered, 'COM03', 0.9)
+        filtered = filter_code(filtered, 'COM01', 0.3)
+        filtered = filter_code(filtered, 'PLN01', 0.4)
+        filtered = filter_code(filtered, 'REP01', 0.9)
+
+        if len(filtered) == 0:
+            return kwargs['false_name'], 1
+
+        Max_conf = max(filtered['score'].values)
+        prio_thr = Max_conf * prio_weight
+        filtered = filtered[filtered['score'] >= prio_thr]
+
+        prio = pd.read_excel(prio_file)
+        prio_lst = list(prio.values)
+        final_code = prio_check(prio_lst, list(filtered['category'].values))
+        defect_score = max(filtered.loc[filtered['category'] == final_code, 'score'].values)
+        return final_code, defect_score
 
 
 def check_in(bbox1, bbox2, thr=0.8):
@@ -163,22 +220,23 @@ def det2cls(json_file,
     cls_result_lst = []
     for img_name in img_lst:
         img_det_df = filtered_df[filtered_df['name'] == img_name]
-        cls_result = chosen_rule_func(img_det_df,
-                                      prio_file=prio_file,
-                                      prio_weight=prio_weight,
-                                      other_thr=other_thr,
-                                      other_name=other_name,
-                                      false_name=false_name)
-        cls_result_lst.append({'image name': img_name, 'pred code': cls_result})
+        cls_result, defect_score = chosen_rule_func(img_det_df,
+                                                    prio_file=prio_file,
+                                                    prio_weight=prio_weight,
+                                                    other_thr=other_thr,
+                                                    other_name=other_name,
+                                                    false_name=false_name)
+
+        cls_result_lst.append({'image name': img_name, 'pred code': cls_result, 'defect score': defect_score})
     cls_df = pd.DataFrame(cls_result_lst)
     cls_df.to_excel(output)
 
 
 if __name__ == '__main__':
-    result_json = r'D:\Project\WHTM\result\21101\21101_at_results.json'
-    prio_file = r'D:\Project\WHTM\data\21101\21101_prio.xlsx'
-    test_images = r'D:\Project\WHTM\data\21101\train_test_data\test'
+    result_json = r'D:\Project\WHTM\result\21101\bt2\21101_bt2_result_v2.json'
+    prio_file = r'D:\Project\WHTM\code\21101_prio.xlsx'
+    test_images = r'E:\whtm\21101bt_part2_2000'
     code_file = r'D:\Project\WHTM\code\21101code.xlsx'
     code = CodeDictionary(code_file)
 
-    det2cls(result_json, test_images, code, false_thr=0.05, other_thr=0, rule=3, prio_file=prio_file, prio_weight=0.5)
+    det2cls(result_json, test_images, code, false_thr=0.05, other_thr=0, rule=3, prio_file=prio_file, prio_weight=0.1)

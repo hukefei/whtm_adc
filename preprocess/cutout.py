@@ -18,7 +18,7 @@ WIDTH = 2448
 # according defects count
 # code: COM01, RES05, COM15, COM99, AZ08, COM03, REP01, STR04, RES03, RES04, AZ19, RES06, PLN01, STR02
 
-p = 1 / np.array([2313, 2190, 1844, 1058, 641, 465 * 100, 555, 317, 808, 188 * 100, 371, 189, 79])
+p = np.array([0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0])
 
 
 def get_gt_boxes(json_file):
@@ -144,7 +144,7 @@ if __name__ == '__main__':
     num_raw_imgs, gt_dict, gt_lst = get_gt_boxes(gt_json)
     print("\nStarting cutout...")
     gt_dict = cutout(gt_dict, gt_lst, defect_dir,
-                     normal_dir, save_dir, max_per_img=3, mix_ratio=0., repeated=4)
+                     normal_dir, save_dir, max_per_img=2, mix_ratio=0., repeated=1)
 
     print("\nWriting new train json...")
     write_new_json(gt_dict, new_json)
