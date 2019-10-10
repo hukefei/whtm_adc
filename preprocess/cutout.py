@@ -16,9 +16,22 @@ WIDTH = 2448
 #                   39, 51, 27, 83, 57, 75, 51, 37, 57, 60])
 
 # according defects count
-# code: COM01, RES05, COM15, COM99, AZ08, COM03, REP01, STR04, RES03, RES04, AZ19, RES06, PLN01, STR02
+# code:
+# AZ08
+# AZ19
+# COM01
+# COM03
+# COM15
+# COM99
+# PLN01
+# REP01
+# RES03
+# QS
+# RES06
+# STR02
+# STR04
 
-p = np.array([0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0])
+p = np.array([0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0])
 
 
 def get_gt_boxes(json_file):
@@ -132,10 +145,10 @@ def write_xmls(foldername, gt_dict, num_raw_imgs, save_dir):
 if __name__ == '__main__':
     gt_json = r'D:\Project\WHTM\data\21101\train_test_data\train.json'
     defect_dir = r'D:\Project\WHTM\data\21101\train_test_data\train'
-    normal_dir = r'D:\Project\WHTM\data\21101\COM99'
+    normal_dir = r'D:\Project\WHTM\data\21101\final_dataset\COM99'
     new_json = r'D:\Project\WHTM\data\21101\train_test_data\cutout_train.json'
-    save_dir = r'D:\Project\WHTM\data\21101\train_test_data\cutout'
-    xml_dir = r'D:\Project\WHTM\data\21101\CUTOUT_xml'
+    save_dir = r'D:\Project\WHTM\data\21101\cutout\cutout_images'
+    xml_dir = r'D:\Project\WHTM\data\21101\cutout\cutout_xmls'
 
     if os.path.exists(save_dir):
         shutil.rmtree(save_dir)
@@ -144,7 +157,7 @@ if __name__ == '__main__':
     num_raw_imgs, gt_dict, gt_lst = get_gt_boxes(gt_json)
     print("\nStarting cutout...")
     gt_dict = cutout(gt_dict, gt_lst, defect_dir,
-                     normal_dir, save_dir, max_per_img=2, mix_ratio=0., repeated=1)
+                     normal_dir, save_dir, max_per_img=1, mix_ratio=0., repeated=1)
 
     print("\nWriting new train json...")
     write_new_json(gt_dict, new_json)

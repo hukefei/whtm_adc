@@ -16,7 +16,11 @@ def cut_defect(images, annotations, output_dir):
             img_path = os.path.join(root_dir, file)
             xml = file.replace('jpg', 'xml')
             xml_path = os.path.join(annotations, xml)
-            tree = ET.parse(xml_path)
+            try:
+                tree = ET.parse(xml_path)
+            except Exception as e:
+                print('no file named {}'.format(xml_path))
+                continue
             root = tree.getroot()
             objs = root.findall('object')
             img = cv2.imread(img_path)
@@ -36,9 +40,9 @@ def cut_defect(images, annotations, output_dir):
 
 
 if __name__ == '__main__':
-    defect_dir = r'D:\Project\WHTM\data\21101\label_data'
-    xml_dir = r'D:\Project\WHTM\data\21101\annotations'
-    save_dir = r'D:\Project\WHTM\data\21101\cut_out_defect'
+    defect_dir = r'E:\1GE02\final_dataset\all_images'
+    xml_dir = r'E:\1GE02\final_dataset\all_xmls'
+    save_dir = r'E:\1GE02\cut_out_defect'
 
     cut_defect(defect_dir, xml_dir, save_dir)
 

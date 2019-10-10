@@ -2,10 +2,9 @@ import os
 import re
 import shutil
 
-file_path = r'D:\Project\WHTM\data\21101\annotations'
+file_path = r'E:\1GE02\final_dataset\all_xmls'
 
-site_code = [ 'AZ08', 'AZ19', 'COM01', 'COM03', 'COM15', 'COM99', 'PLN01',
-             'REP01', 'RES03', 'RES06', 'STR02', 'STR04', 'QS']
+site_code = ['AZ12', 'AZ21', 'L']
 
 for root, dirs, files in os.walk(file_path):
     for file in files:

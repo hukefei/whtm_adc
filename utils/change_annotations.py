@@ -2,7 +2,7 @@ import os
 import xml.etree.ElementTree as ET
 
 defect_path = r'D:\Project\WHTM\data\21101\modify_code'
-xml_path = r'D:\Project\WHTM\data\21101\annotations'
+xml_path = r'D:\Project\WHTM\data\21101\final_dataset\annotations'
 
 for root, _, files in os.walk(defect_path):
     code_root = root.replace('/', '\\').split('\\')[-1]
@@ -18,6 +18,9 @@ for root, _, files in os.walk(defect_path):
         print(file_name, code, xmin, ymin, xmax, ymax)
         xml_name = file_name + '.xml'
         xml = os.path.join(xml_path, xml_name)
+        if not os.path.exists(xml):
+            print('{} not exists'.format(xml))
+            continue
         tree = ET.parse(xml)
         tree_root = tree.getroot()
         objs = tree_root.findall('object')

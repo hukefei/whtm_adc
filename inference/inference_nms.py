@@ -8,6 +8,7 @@ import shutil
 import numpy as np
 from utils.Code_dictionary import CodeDictionary
 import pickle
+import random
 
 
 class MyEncoder(json.JSONEncoder):
@@ -72,24 +73,24 @@ def nms(bboxes, iou_threshold, sigma=0.3, method='nms'):
 
     return best_bboxes
 
+
 def model_test(pkl_file,
                score_thr=0.1):
-
     with open(pkl_file, 'rb') as f:
         results = pickle.load(f)
 
     output_bboxes = []
     json_dict = []
-    for i, result in enumerate(results):#loop for images
+    for i, result in enumerate(results):  # loop for images
         img_path = imgs[i].replace('\\', '/')
         img_name = img_path.split('/')[-1]
         print(i, img_name)
 
         total_bbox = []
-        for id, boxes in enumerate(result):#loop for categories
+        for id, boxes in enumerate(result):  # loop for categories
             category_id = id + 1
             if len(boxes) != 0:
-                for box in boxes:#loop for bbox
+                for box in boxes:  # loop for bbox
                     conf = box[4]
                     if conf > score_thr:
                         total_bbox.append(list(box) + [category_id])
@@ -116,7 +117,8 @@ def show_and_save_images(img_path, bboxes, code_dict, out_dir=None):
         code = code_dict.id2code(int(bbox[5]))
         label_txt = code + ': ' + str(round(bbox[4], 2))
         cv2.rectangle(img, left_top, right_bottom, (0, 0, 255), 1)
-        cv2.putText(img, label_txt, (bbox_int[0], max(bbox_int[1] - 2, 0)), cv2.FONT_HERSHEY_COMPLEX, 1, (0, 0, 255), 2)
+        cv2.putText(img, label_txt, (bbox_int[0], random.randint(max(bbox_int[1] - 2, 0), bbox_int[1] + 10)),
+                    cv2.FONT_HERSHEY_COMPLEX, 1, (0, 0, 255), 2)
 
     if out_dir is not None:
         cv2.imwrite(os.path.join(out_dir, img_name), img)

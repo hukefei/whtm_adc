@@ -113,8 +113,8 @@ def convert(name_list, xml_dir, img_dir, save_img, save_json, code_dictionary):
 
 
 if __name__ == '__main__':
-    xml_dir = r'D:\Project\WHTM\data\21101\annotations'
-    img_dir = r'D:\Project\WHTM\data\21101\label_data'
+    xml_dir = r'D:\Project\WHTM\data\21101\final_dataset\annotations'
+    img_dir = r'D:\Project\WHTM\data\21101\final_dataset\images'
 
     save_dir = r'D:\Project\WHTM\data\21101\train_test_data'
     code_file = r'D:\Project\WHTM\code\21101code.xlsx'
