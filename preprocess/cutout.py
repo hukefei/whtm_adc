@@ -143,12 +143,12 @@ def write_xmls(foldername, gt_dict, num_raw_imgs, save_dir):
 
 
 if __name__ == '__main__':
-    gt_json = r'D:\Project\WHTM\data\21101\train_test_data\train.json'
-    defect_dir = r'D:\Project\WHTM\data\21101\train_test_data\train'
+    gt_json = r'E:\21101\all_train\train.json'
+    defect_dir = r'E:\21101\all_train\train'
     normal_dir = r'D:\Project\WHTM\data\21101\final_dataset\COM99'
-    new_json = r'D:\Project\WHTM\data\21101\train_test_data\cutout_train.json'
-    save_dir = r'D:\Project\WHTM\data\21101\cutout\cutout_images'
-    xml_dir = r'D:\Project\WHTM\data\21101\cutout\cutout_xmls'
+    new_json = r'E:\21101\all_train\cutout_train.json'
+    save_dir = r'E:\21101\all_train\cutout_images'
+    xml_dir = r'E:\21101\all_train\cutout_xmls'
 
     if os.path.exists(save_dir):
         shutil.rmtree(save_dir)

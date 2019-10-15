@@ -2,6 +2,10 @@ import json
 import pandas as pd
 from utils.Code_dictionary import CodeDictionary
 import os
+import numpy as np
+from utils.utils import nms, check_in, show_and_save_images, check_in_filter
+import shutil
+import glob
 
 
 def prio_check(prio_lst, code_lst):
@@ -121,46 +125,83 @@ def default_rule(det_df, **kwargs):
     assert 'prio_weight' in kwargs.keys(), 'Must input priority weight'
     assert 'prio_file' in kwargs.keys(), 'Must input priority file'
 
+    # out dir
+    out_dir = 'detection result images'
+    if out_dir is not None:
+        if not os.path.exists(out_dir):
+            os.makedirs(out_dir)
+
+    det_df['bbox_score'] = det_df.bbox + det_df.score.map(lambda x: [x])
+
     prio_weight = kwargs['prio_weight']
     prio_file = kwargs['prio_file']
 
     if len(det_df) == 0:
+        if kwargs['draw_imgs']:
+            show_and_save_images(kwargs['img_path'], kwargs['img_name'], det_df.bbox_score.values,
+                                 det_df.category.values,
+                                 out_dir=out_dir)
         return kwargs['false_name'], 1
     else:
         filtered = det_df[det_df['score'] >= kwargs['other_thr']]
         if len(filtered) == 0:
-            return kwargs['other_name']
+            return kwargs['other_name'], 1
 
-        df_res04 = filtered[filtered['category'] == 'QS']
-        if len(df_res04) >= 3:
+        # filtering
+        filtered = filter_code(filtered, 'RES06', 0.9)
+        filtered = filter_code(filtered, 'RES03', 0.85, 'QS')
+        filtered = filter_code(filtered, 'AZ08', 0.6)
+        filtered = filter_code(filtered, 'STR02', 0.9, 'COM01')
+        filtered = filter_code(filtered, 'STR04', 0.8, 'COM01')
+        filtered = filter_code(filtered, 'COM03', 0.9)
+        filtered = filter_code(filtered, 'PLN01', 0.8, 'QS')
+        filtered = filter_code(filtered, 'REP01', 0.9)
+        # filtered = filter_code(filtered, 'COM01', 0.4)
+
+        # check in
+        if len(filtered) > 1:
+            if np.sum(filtered.category.values == 'QS') > 1:
+                code_df = filtered[filtered['category'] == 'QS']
+                filtered = check_in_filter(filtered, code_df, 0.9)
+
+        # nms
+        if len(filtered) != 0:
+            lst = []
+            for i in range(len(filtered)):
+                lst.append(filtered.iloc[i, -1])
+            arr = np.array(lst)
+            best_bboxes = nms(arr, 0.5)
+            filtered = filtered[filtered['bbox_score'].map(lambda x: x in best_bboxes)]
+
+        # judge res04
+        df_res05 = filtered[(filtered['category'] == 'QS') & (filtered['score'] >= 0.5)]
+        if len(df_res05) >= 3:
             filtered.loc[filtered['category'] == 'QS', 'category'] = 'RES04'
         else:
             filtered.loc[filtered['category'] == 'QS', 'category'] = 'RES05'
 
-        # delect redundant RES06 code
-        # delect redundant RES03 code
-        filtered = filter_code(filtered, 'RES06', 0.7)
-        #filtered = filter_code(filtered, 'RES03', 0.3)
-        filtered = filter_code(filtered, 'RES03', 0.5, 'RES05')
-        filtered = filter_code(filtered, 'AZ08', 0.6)
-        filtered = filter_code(filtered, 'STR02', 0.6)
-        filtered = filter_code(filtered, 'STR04', 0.8, 'COM01')
-        filtered = filter_code(filtered, 'COM03', 0.9)
-        filtered = filter_code(filtered, 'COM01', 0.3)
-        filtered = filter_code(filtered, 'PLN01', 0.4)
-        filtered = filter_code(filtered, 'REP01', 0.9)
-
         if len(filtered) == 0:
+            if kwargs['draw_imgs']:
+                show_and_save_images(kwargs['img_path'], kwargs['img_name'], filtered.bbox_score.values,
+                                     filtered.category.values,
+                                     out_dir=out_dir)
             return kwargs['false_name'], 1
 
         Max_conf = max(filtered['score'].values)
         prio_thr = Max_conf * prio_weight
-        filtered = filtered[filtered['score'] >= prio_thr]
+        filtered_final = filtered[filtered['score'] >= prio_thr]
 
         prio = pd.read_excel(prio_file)
         prio_lst = list(prio.values)
-        final_code = prio_check(prio_lst, list(filtered['category'].values))
-        defect_score = max(filtered.loc[filtered['category'] == final_code, 'score'].values)
+        final_code = prio_check(prio_lst, list(filtered_final['category'].values))
+        defect_score = max(filtered_final.loc[filtered['category'] == final_code, 'score'].values)
+
+        # draw images
+        if kwargs['draw_imgs']:
+            show_and_save_images(kwargs['img_path'], kwargs['img_name'], filtered.bbox_score.values,
+                                 filtered.category.values,
+                                 out_dir=out_dir)
+
         return final_code, defect_score
 
 
@@ -189,7 +230,8 @@ def det2cls(json_file,
             prio_file=None,
             prio_weight=0.9,
             false_name='COM99',
-            output='classification_result.xlsx'):
+            output='classification_result.xlsx',
+            draw_imgs=False):
     rule_dict = {0: 'Max Confidence',
                  1: 'Priority Only',
                  2: 'Max Confidence and Priority',
@@ -225,7 +267,10 @@ def det2cls(json_file,
                                                     prio_weight=prio_weight,
                                                     other_thr=other_thr,
                                                     other_name=other_name,
-                                                    false_name=false_name)
+                                                    false_name=false_name,
+                                                    draw_imgs=draw_imgs,
+                                                    img_path=test_images_dir,
+                                                    img_name=img_name)
 
         cls_result_lst.append({'image name': img_name, 'pred code': cls_result, 'defect score': defect_score})
     cls_df = pd.DataFrame(cls_result_lst)
@@ -233,10 +278,19 @@ def det2cls(json_file,
 
 
 if __name__ == '__main__':
-    result_json = r'D:\Project\WHTM\result\21101\bt2\21101_bt2_result_v2.json'
-    prio_file = r'D:\Project\WHTM\code\21101_prio.xlsx'
-    test_images = r'E:\whtm\21101bt_part2_2000'
-    code_file = r'D:\Project\WHTM\code\21101code.xlsx'
+    result_json = r'/data/sdv1/whtm/result/21101/21101_v4_bt2.json'
+    prio_file = r'/data/sdv1/whtm/document/21101_prio.xlsx'
+    test_images = r'/data/sdv1/whtm/data/21101_bt/21101bt_part2_2000'
+    code_file = r'/data/sdv1/whtm/document/21101code.xlsx'
     code = CodeDictionary(code_file)
 
-    det2cls(result_json, test_images, code, false_thr=0.05, other_thr=0, rule=3, prio_file=prio_file, prio_weight=0.1)
+    det2cls(result_json,
+            test_images,
+            code,
+            false_thr=0.05,
+            other_thr=0,
+            rule=3,
+            prio_file=prio_file,
+            prio_weight=0.9,
+            output=r'/data/sdv1/whtm/result/21101/v4_bt/classification_result.xlsx',
+            draw_imgs=True)

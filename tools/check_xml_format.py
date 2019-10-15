@@ -4,7 +4,7 @@ import shutil
 
 file_path = r'E:\1GE02\final_dataset\all_xmls'
 
-site_code = ['AZ12', 'AZ21', 'L']
+site_code = ['AZ12', 'PR', 'L']
 
 for root, dirs, files in os.walk(file_path):
     for file in files:

@@ -113,11 +113,11 @@ def convert(name_list, xml_dir, img_dir, save_img, save_json, code_dictionary):
 
 
 if __name__ == '__main__':
-    xml_dir = r'D:\Project\WHTM\data\21101\final_dataset\annotations'
-    img_dir = r'D:\Project\WHTM\data\21101\final_dataset\images'
+    xml_dir = r'E:\1GE02\final_dataset\all_xmls'
+    img_dir = r'E:\1GE02\final_dataset\all_images'
 
-    save_dir = r'D:\Project\WHTM\data\21101\train_test_data'
-    code_file = r'D:\Project\WHTM\code\21101code.xlsx'
+    save_dir = r'E:\1GE02\1GE02_train_test_data'
+    code_file = r'E:\1GE02\1GE02.xlsx'
     code = CodeDictionary(code_file)
 
     train_json = os.path.join(save_dir, 'train.json')
