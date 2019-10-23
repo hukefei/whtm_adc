@@ -149,20 +149,20 @@ def default_rule(det_df, **kwargs):
 
         # filtering
         filtered = filter_code(filtered, 'RES06', 0.9)
-        filtered = filter_code(filtered, 'RES03', 0.85, 'QS')
+        filtered = filter_code(filtered, 'RES03', 0.85, 'RES05')
         filtered = filter_code(filtered, 'AZ08', 0.6)
         filtered = filter_code(filtered, 'STR02', 0.9, 'COM01')
         filtered = filter_code(filtered, 'STR04', 0.8, 'COM01')
         filtered = filter_code(filtered, 'COM03', 0.9)
-        filtered = filter_code(filtered, 'PLN01', 0.8, 'QS')
+        filtered = filter_code(filtered, 'PLN01', 0.8, 'RES05')
         filtered = filter_code(filtered, 'REP01', 0.9)
         # filtered = filter_code(filtered, 'COM01', 0.4)
 
-        # check in
-        if len(filtered) > 1:
-            if np.sum(filtered.category.values == 'QS') > 1:
-                code_df = filtered[filtered['category'] == 'QS']
-                filtered = check_in_filter(filtered, code_df, 0.9)
+        # # check in
+        # if len(filtered) > 1:
+        #     if np.sum(filtered.category.values == 'QS') > 1:
+        #         code_df = filtered[filtered['category'] == 'QS']
+        #         filtered = check_in_filter(filtered, code_df, 0.9)
 
         # nms
         if len(filtered) != 0:
@@ -174,11 +174,9 @@ def default_rule(det_df, **kwargs):
             filtered = filtered[filtered['bbox_score'].map(lambda x: x in best_bboxes)]
 
         # judge res04
-        df_res05 = filtered[(filtered['category'] == 'QS') & (filtered['score'] >= 0.5)]
+        df_res05 = filtered[(filtered['category'] == 'RES05') & (filtered['score'] >= 0.5)]
         if len(df_res05) >= 3:
-            filtered.loc[filtered['category'] == 'QS', 'category'] = 'RES04'
-        else:
-            filtered.loc[filtered['category'] == 'QS', 'category'] = 'RES05'
+            filtered.loc[filtered['category'] == 'RES05', 'category'] = 'RES04'
 
         if len(filtered) == 0:
             if kwargs['draw_imgs']:
@@ -261,6 +259,7 @@ def det2cls(json_file,
 
     cls_result_lst = []
     for img_name in img_lst:
+        print('processing image: {}'.format(img_name))
         img_det_df = filtered_df[filtered_df['name'] == img_name]
         cls_result, defect_score = chosen_rule_func(img_det_df,
                                                     prio_file=prio_file,
@@ -278,10 +277,10 @@ def det2cls(json_file,
 
 
 if __name__ == '__main__':
-    result_json = r'/data/sdv1/whtm/result/21101/21101_v4_bt2.json'
+    result_json = r'/data/sdv1/whtm/result/21101/21101_v6_bt2.json'
     prio_file = r'/data/sdv1/whtm/document/21101_prio.xlsx'
     test_images = r'/data/sdv1/whtm/data/21101_bt/21101bt_part2_2000'
-    code_file = r'/data/sdv1/whtm/document/21101code.xlsx'
+    code_file = r'/data/sdv1/whtm/document/21101.xlsx'
     code = CodeDictionary(code_file)
 
     det2cls(result_json,
@@ -291,6 +290,6 @@ if __name__ == '__main__':
             other_thr=0,
             rule=3,
             prio_file=prio_file,
-            prio_weight=0.9,
-            output=r'/data/sdv1/whtm/result/21101/v4_bt/classification_result.xlsx',
+            prio_weight=0.2,
+            output=r'/data/sdv1/whtm/result/21101/v6_bt2/classification_result.xlsx',
             draw_imgs=True)

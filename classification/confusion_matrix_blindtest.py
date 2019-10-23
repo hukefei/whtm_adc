@@ -51,9 +51,9 @@ def generate_confusion_matrix(det_result_file,
 
 
 if __name__ == '__main__':
-    det_result = r'/data/sdv1/whtm/result/21101/v4_bt/classification_result.xlsx'
-    gt_result = r'/data/sdv1/whtm/result/21101/v4_bt/true_code.xlsx'
-    code_file = r'/data/sdv1/whtm/document/21101code.xlsx'
+    det_result = r'D:\Project\WHTM\result\21101\v5_bt2\classification_result.xlsx'
+    gt_result = r'D:\Project\WHTM\result\21101\v5_bt2\true_code.xlsx'
+    code_file = r'D:\Project\WHTM\code\21101.xlsx'
 
     code = CodeDictionary(code_file)
     labels = code.code_list
@@ -63,4 +63,4 @@ if __name__ == '__main__':
     generate_confusion_matrix(det_result,
                               gt_result,
                               labels,
-                              output=r'/data/sdv1/whtm/result/21101/v4_bt/confusion_matrix.xlsx')
+                              output=r'D:\Project\WHTM\result\21101\v5_bt2\confusion_matrix_21101_all_checked.xlsx')

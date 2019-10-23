@@ -8,8 +8,7 @@ import shutil
 import numpy as np
 from utils.Code_dictionary import CodeDictionary
 import pickle
-import random
-from utils.utils import bboxes_iou, nms
+from utils.utils import nms
 
 
 class MyEncoder(json.JSONEncoder):
@@ -82,18 +81,18 @@ def show_and_save_images(img_path, bboxes, code_dict, out_dir=None):
 
 
 if __name__ == '__main__':
-    imgs = glob.glob(r'/data/sdv1/whtm/data/1GE02/1GE02_train_test_data/test/*.jpg')
-    pkl_file = r'/data/sdv1/whtm/result/1GE02/1GE02_v1_at.pkl'
+    imgs = glob.glob(r'/data/sdv1/whtm/data/21101_bt/21101bt_part2_2000/*.jpg')
+    pkl_file = r'/data/sdv1/whtm/result/21101/21101_v6_bt2.pkl'
     output_bboxes, json_dict = model_test(pkl_file,
                                           score_thr=0.05,
                                           NMS=False)
-    with open(r'/data/sdv1/whtm/result/1GE02/1GE02_v1_at.json', 'w') as f:
+    with open(r'/data/sdv1/whtm/result/21101/21101_v6_bt2.json', 'w') as f:
         json.dump(json_dict, f, indent=4)
 
-    code_file = r'/data/sdv1/whtm/document/1GE02.xlsx'
+    code_file = r'/data/sdv1/whtm/document/21101.xlsx'
     code = CodeDictionary(code_file)
 
-    out_dir = r'1GEO2_AT'
+    out_dir = None
     if out_dir is not None:
         if os.path.exists(out_dir):
             shutil.rmtree(out_dir)

@@ -40,9 +40,9 @@ def cut_defect(images, annotations, output_dir):
 
 
 if __name__ == '__main__':
-    defect_dir = r'E:\1GE02\final_dataset\all_images'
-    xml_dir = r'E:\1GE02\final_dataset\all_xmls'
-    save_dir = r'E:\1GE02\cut_out_defect'
+    defect_dir = r'D:\Project\WHTM\data\21101\final_dataset\images'
+    xml_dir = r'D:\Project\WHTM\data\21101\final_dataset\annotations'
+    save_dir = r'D:\Project\WHTM\data\21101\cut_out_defect'
 
     cut_defect(defect_dir, xml_dir, save_dir)
 

@@ -2,14 +2,26 @@ import os
 import re
 import shutil
 
-file_path = r'E:\1GE02\final_dataset\all_xmls'
+file_path = r'D:\Project\WHTM\data\21101\final_dataset\annotations'
 
-site_code = ['AZ12', 'PR', 'L']
+site_code = ['AZ08',
+             'AZ19',
+             'COM01',
+             'COM03',
+             'COM15',
+             'COM99',
+             'PLN01',
+             'REP01',
+             'RES03',
+             'RES05',
+             'RES06',
+             'STR02',
+             'STR04']
 
 for root, dirs, files in os.walk(file_path):
     for file in files:
         if '.xml' in file:
-            with open(os.path.join(root, file), 'r', encoding= 'utf-8') as f:
+            with open(os.path.join(root, file), 'r', encoding='utf-8') as f:
                 content = f.read()
                 codes_in_xml = re.findall('<name>(.*?)</name>', content)
             if len(codes_in_xml) == 0:
@@ -19,4 +31,3 @@ for root, dirs, files in os.walk(file_path):
                 for code in codes_in_xml:
                     if code not in site_code:
                         print('xml content error: {} has wrong code: {}'.format(os.path.join(root, file), code))
-

@@ -3,10 +3,9 @@ import pandas as pd
 
 class CodeDictionary():
     def __init__(self, code_file):
-        self.code_df = pd.read_excel(code_file, header=0)
+        self.code_df = pd.read_table(code_file, header=-1, names=['CODE'])
+        self.code_df['ID'] = self.code_df.index + 1
         print(self.code_df)
-        assert 'CODE' in self.code_df.columns, 'CODE should be in the code file'
-        assert 'ID' in self.code_df.columns, 'ID should be in the code file'
         self.code_dict, self.code_list = self.get_dict(self.code_df)
 
     def code2id(self, code_lst):
@@ -38,6 +37,6 @@ class CodeDictionary():
 
 
 if __name__ == '__main__':
-    code_f = r'D:\Project\WHTM\code\21101code.xlsx'
+    code_f = r'/data/sdv1/whtm/document/G6_21101-V1.0.txt'
     code = CodeDictionary(code_f)
     print(code.code_list)

@@ -57,7 +57,7 @@ def get_and_check(root, name, length):
     return vars
 
 
-def convert(name_list, xml_dir, img_dir, save_img, save_json, code_dictionary):
+def convert(name_list, xml_dir, img_dir, save_img, save_json, code_dictionary, split_img=True):
     json_dict = {"images": [], "type": "instances", "annotations": [], "categories": []}
     categories = code_dictionary.code_dict
     bnd_id = START_BOUNDING_BOX_ID
@@ -95,7 +95,8 @@ def convert(name_list, xml_dir, img_dir, save_img, save_json, code_dictionary):
                    'segmentation': []}
             json_dict['annotations'].append(ann)
             bnd_id += 1
-        shutil.copy(os.path.join(img_dir, name + '.jpg'), os.path.join(save_img, name + '.jpg'))
+        if split_img:
+            shutil.copy(os.path.join(img_dir, name + '.jpg'), os.path.join(save_img, name + '.jpg'))
         image_id += 1
     """
     for cate, cid in categories.items():
@@ -113,11 +114,11 @@ def convert(name_list, xml_dir, img_dir, save_img, save_json, code_dictionary):
 
 
 if __name__ == '__main__':
-    xml_dir = r'E:\1GE02\final_dataset\all_xmls'
-    img_dir = r'E:\1GE02\final_dataset\all_images'
+    xml_dir = r'D:\Project\WHTM\data\21101\final_dataset\annotations'
+    img_dir = r'D:\Project\WHTM\data\21101\final_dataset\images'
 
-    save_dir = r'E:\1GE02\1GE02_train_test_data'
-    code_file = r'E:\1GE02\1GE02.xlsx'
+    save_dir = r'D:\Project\WHTM\data\21101\train_test_data'
+    code_file = r'D:\Project\WHTM\code\21101.xlsx'
     code = CodeDictionary(code_file)
 
     train_json = os.path.join(save_dir, 'train.json')
@@ -130,5 +131,5 @@ if __name__ == '__main__':
         os.makedirs(dir)
 
     train, test = split_dataset(xml_dir, 0.9)
-    convert(train, xml_dir, img_dir, train_img, train_json, code)
-    convert(test, xml_dir, img_dir, test_img, test_json, code)
+    convert(train, xml_dir, img_dir, train_img, train_json, code, split_img=False)
+    convert(test, xml_dir, img_dir, test_img, test_json, code, split_img=False)

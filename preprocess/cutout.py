@@ -5,7 +5,8 @@ import cv2
 import os, json
 import random, shutil
 import numpy as np
-from pascal_voc_io import PascalVocWriter
+from preprocess.pascal_voc_io import PascalVocWriter
+from utils.Code_dictionary import CodeDictionary
 
 NUM_CLASSES = 13
 HEIGHT = 2056
@@ -26,12 +27,12 @@ WIDTH = 2448
 # PLN01
 # REP01
 # RES03
-# QS
+# RES05
 # RES06
 # STR02
 # STR04
 
-p = np.array([0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0])
+p = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0])
 
 
 def get_gt_boxes(json_file):
@@ -128,7 +129,7 @@ def write_new_json(gt_dict, new_json):
         json.dump(json_dict, f, indent=4)
 
 
-def write_xmls(foldername, gt_dict, num_raw_imgs, save_dir):
+def write_xmls(foldername, gt_dict, num_raw_imgs, save_dir, code_dict):
     imgs = list(gt_dict.keys())
     annotations = list(gt_dict.values())
     imgSize = [HEIGHT, WIDTH, 3]
@@ -138,17 +139,20 @@ def write_xmls(foldername, gt_dict, num_raw_imgs, save_dir):
         localImgPath = os.path.join(foldername, filename)
         XMLWriter = PascalVocWriter(foldername, filename, imgSize, localImgPath)
         for box in annotations[i]:
-            XMLWriter.addBndBox(box[1], box[2], box[1] + box[3], box[2] + box[4], str(box[0]))
+            XMLWriter.addBndBox(box[1], box[2], box[1] + box[3], box[2] + box[4], code_dict.id2code(box[0]))
         XMLWriter.save(os.path.join(save_dir, filename[:-4] + '.xml'))
 
 
 if __name__ == '__main__':
-    gt_json = r'E:\21101\all_train\train.json'
-    defect_dir = r'E:\21101\all_train\train'
+    gt_json = r'D:\Project\WHTM\data\21101\train_test_data\train.json'
+    defect_dir = r'D:\Project\WHTM\data\21101\final_dataset\images'
     normal_dir = r'D:\Project\WHTM\data\21101\final_dataset\COM99'
-    new_json = r'E:\21101\all_train\cutout_train.json'
-    save_dir = r'E:\21101\all_train\cutout_images'
-    xml_dir = r'E:\21101\all_train\cutout_xmls'
+    new_json = r'D:\Project\WHTM\data\21101\train_test_data\cutout_train.json'
+    save_dir = r'D:\Project\WHTM\data\21101\train_test_data\cutout_images'
+    xml_dir = r'D:\Project\WHTM\data\21101\train_test_data\cutout_xmls'
+    code_file = r'D:\Project\WHTM\code\21101.xlsx'
+
+    code = CodeDictionary(code_file)
 
     if os.path.exists(save_dir):
         shutil.rmtree(save_dir)
@@ -167,4 +171,4 @@ if __name__ == '__main__':
     if os.path.exists(xml_dir):
         shutil.rmtree(xml_dir)
     os.makedirs(xml_dir)
-    write_xmls(save_dir, gt_dict, num_raw_imgs, xml_dir)
+    write_xmls(save_dir, gt_dict, num_raw_imgs, xml_dir, code)
