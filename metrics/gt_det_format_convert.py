@@ -3,8 +3,6 @@ import json
 import shutil
 
 
-
-
 def make_save_dirs(save_dir):
     gt_save_dir = os.path.join(save_dir, 'groundtruths')
     det_save_dir = os.path.join(save_dir, 'detections')
@@ -35,10 +33,11 @@ def gt_convert(test_gt_json, gt_save_dir):
                 ymin = bbox[1]
                 xmax = xmin + bbox[2]
                 ymax = ymin + bbox[3]
-                bbox_lst.append([str(category), str(xmin), str(ymin) ,str(xmax), str(ymax)])
-        with open(os.path.join(gt_save_dir, filename),'w') as f:
+                bbox_lst.append([str(category), str(xmin), str(ymin), str(xmax), str(ymax)])
+        with open(os.path.join(gt_save_dir, filename), 'w') as f:
             for bbox in bbox_lst:
                 f.write(' '.join(bbox) + '\n')
+
 
 def det_convert(test_result_json, det_save_dir):
     with open(test_result_json) as f:
@@ -55,6 +54,7 @@ def det_convert(test_result_json, det_save_dir):
         with open(det_file, 'a') as f:
             f.write(' '.join(lst) + '\n')
 
+
 if __name__ == '__main__':
     test_gt_json = r'F:\guangdong\data\guangdong1_round1_train1_20190818\guangdong1_round1_train1_20190818\test_datasets\test_datasets\test.json'
     test_result_json = r'F:\guangdong\result\results_0820.json'
@@ -63,5 +63,3 @@ if __name__ == '__main__':
     gt_save_dir, det_save_dir = make_save_dirs(save_dir)
     gt_convert(test_gt_json, gt_save_dir)
     det_convert(test_result_json, det_save_dir)
-
-

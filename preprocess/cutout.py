@@ -8,32 +8,12 @@ import numpy as np
 from preprocess.pascal_voc_io import PascalVocWriter
 from utils.Code_dictionary import CodeDictionary
 
-NUM_CLASSES = 13
+
+p = np.array([0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+NUM_CLASSES = 12
+assert len(p) == NUM_CLASSES
 HEIGHT = 2056
 WIDTH = 2448
-
-# according previous map
-# p = 1 / np.array([89, 48, 82, 64, 80, 73, 19, 75, 73, 34,
-#                   39, 51, 27, 83, 57, 75, 51, 37, 57, 60])
-
-# according defects count
-# code:
-# AZ08
-# AZ19
-# COM01
-# COM03
-# COM15
-# COM99
-# PLN01
-# REP01
-# RES03
-# RES05
-# RES06
-# STR02
-# STR04
-
-p = np.array([0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0])
-
 
 def get_gt_boxes(json_file):
     with open(json_file, 'r') as f:
@@ -145,12 +125,14 @@ def write_xmls(foldername, gt_dict, num_raw_imgs, save_dir, code_dict):
 
 if __name__ == '__main__':
     gt_json = r'D:\Project\WHTM\data\21101\train_test_data\train.json'
-    defect_dir = r'D:\Project\WHTM\data\21101\final_dataset\images'
-    normal_dir = r'D:\Project\WHTM\data\21101\final_dataset\COM99'
-    new_json = r'D:\Project\WHTM\data\21101\train_test_data\cutout_train.json'
-    save_dir = r'D:\Project\WHTM\data\21101\train_test_data\cutout_images'
-    xml_dir = r'D:\Project\WHTM\data\21101\train_test_data\cutout_xmls'
-    code_file = r'D:\Project\WHTM\code\21101.xlsx'
+    defect_dir = r'D:\Project\WHTM\data\21101\train_test_data\train'
+    normal_dir = r'E:\21101\21101_new_20191029\add_union\false'
+    new_json = r'E:\21101\21101_new_20191029\add_union\cutout_train.json'
+    save_dir = r'E:\21101\21101_new_20191029\add_union\cutout_images'
+    xml_dir = r'E:\21101\21101_new_20191029\add_union\cutout_xmls'
+    code_file = r'D:\Project\WHTM\code\21101.txt'
+
+
 
     code = CodeDictionary(code_file)
 

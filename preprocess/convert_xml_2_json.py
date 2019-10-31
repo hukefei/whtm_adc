@@ -1,19 +1,13 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 import os
 import json
-import shutil
 import numpy as np
 import xml.etree.ElementTree as ET
-import random
 from utils.Code_dictionary import CodeDictionary
 
-random.seed(54321)
+
 
 START_IMAGE_ID = 1
 START_BOUNDING_BOX_ID = 1
-
 
 class MyEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -26,26 +20,6 @@ class MyEncoder(json.JSONEncoder):
         else:
             return super(MyEncoder, self).default(obj)
 
-
-def split_dataset(xml_dir, train_percent):
-    total_xml = os.listdir(xml_dir)
-    num = len(total_xml)
-    train = random.sample(range(num), int(num * train_percent))
-    ftrain, ftest = [], []
-    for i in range(num):
-        name = total_xml[i][:-4] + '\n'
-        if i in train:
-            ftrain.append(name)
-        else:
-            ftest.append(name)
-    return ftrain, ftest
-
-
-def get(root, name):
-    vars = root.findall(name)
-    return vars
-
-
 def get_and_check(root, name, length):
     vars = root.findall(name)
     if len(vars) == 0:
@@ -56,8 +30,11 @@ def get_and_check(root, name, length):
         vars = vars[0]
     return vars
 
+def get(root, name):
+    vars = root.findall(name)
+    return vars
 
-def convert(name_list, xml_dir, img_dir, save_img, save_json, code_dictionary, split_img=True):
+def convert(name_list, xml_dir, save_json, code_dictionary):
     json_dict = {"images": [], "type": "instances", "annotations": [], "categories": []}
     categories = code_dictionary.code_dict
     bnd_id = START_BOUNDING_BOX_ID
@@ -95,8 +72,6 @@ def convert(name_list, xml_dir, img_dir, save_img, save_json, code_dictionary, s
                    'segmentation': []}
             json_dict['annotations'].append(ann)
             bnd_id += 1
-        if split_img:
-            shutil.copy(os.path.join(img_dir, name + '.jpg'), os.path.join(save_img, name + '.jpg'))
         image_id += 1
     """
     for cate, cid in categories.items():
@@ -107,29 +82,21 @@ def convert(name_list, xml_dir, img_dir, save_img, save_json, code_dictionary, s
         cat = {'supercategory': 'none', 'id': cate, 'name': cid}
         json_dict['categories'].append(cat)
 
-    json_fp = open(save_json, 'w')
-    json_str = json.dumps(json_dict, indent=4, cls=MyEncoder)
-    json_fp.write(json_str)
-    json_fp.close()
+    with open(save_json, 'w') as json_fp:
+        json_str = json.dumps(json_dict, indent=4, cls=MyEncoder)
+        json_fp.write(json_str)
 
 
 if __name__ == '__main__':
-    xml_dir = r'D:\Project\WHTM\data\21101\final_dataset\annotations'
-    img_dir = r'D:\Project\WHTM\data\21101\final_dataset\images'
+    file_dir = r'E:\1GE02\1GE02_train_test_data\train'
+    name_lst = []
+    for root, _, files in os.walk(file_dir):
+        for file in files:
+            if file.endswith('jpg') or file.endswith('JPG'):
+                name_lst.append(file[:-4])
 
-    save_dir = r'D:\Project\WHTM\data\21101\train_test_data'
-    code_file = r'D:\Project\WHTM\code\G6_21101-V1.0.txt'
+    json_file = r'E:\1GE02\1GE02_train_test_data\train.json'
+    code_file = r'E:\1GE02\1GE02.txt'
     code = CodeDictionary(code_file)
 
-    train_json = os.path.join(save_dir, 'train.json')
-    test_json = os.path.join(save_dir, 'test.json')
-    train_img = os.path.join(save_dir, 'train')
-    test_img = os.path.join(save_dir, 'test')
-    for dir in [train_img, test_img]:
-        if os.path.exists(dir):
-            shutil.rmtree(dir)
-        os.makedirs(dir)
-
-    train, test = split_dataset(xml_dir, 0.9)
-    convert(train, xml_dir, img_dir, train_img, train_json, code, split_img=False)
-    convert(test, xml_dir, img_dir, test_img, test_json, code, split_img=False)
+    convert(name_lst, file_dir, json_file, code)

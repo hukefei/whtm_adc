@@ -35,8 +35,8 @@ def model_test(imgs,
 
 
 if __name__ == '__main__':
-    imgs = glob.glob('/data/sdv1/whtm/data/21101_bt/21101bt_part2_2000/*.jpg')
-    cfg_file = '/data/sdv1/whtm/config/21101/21101_v6.py'
-    ckpt_file = '/data/sdv1/whtm/work_dirs/21101_v6/epoch_6.pth'
-    save_file = r'/data/sdv1/whtm/result/21101/21101_v6_bt2.pkl'
+    imgs = glob.glob('/data/sdv1/whtm/data/1GE02_v2/1GE02_train_test_data/test/*.jpg')
+    cfg_file = '/data/sdv1/whtm/config/1GE02/1GE02_v3.py'
+    ckpt_file = '/data/sdv1/whtm/work_dirs/1GE02_v3/epoch_16.pth'
+    save_file = r'/data/sdv1/whtm/result/1GE02/1GE02_v3_test.pkl'
     results = model_test(imgs, cfg_file, ckpt_file, save_file)

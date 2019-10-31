@@ -169,29 +169,30 @@ def model_test(result,
 
 def default_rule(det_lst, img_path, img_name, json_config_file, code_file, draw_img=False, **kwargs):
     """
-    default rule for station 21101
-    :param det_lst: detetion result of mmdetection in list format
-    :param img_path: image directory
-    :param img_name: image name
-    :param json_config_file: config file in json format
-    :param code_file: categories in txt format
-    :return:
-    main code
-    bbox
-    score
-    image with bbox and score
+
+    :param det_lst: list,
+    :param img_path: str,
+    :param img_name: str,
+    :param size: float, size from .gls file
+    :param json_config_file: str, config parameters in json format
+    :param code_file: str, code file in txt format
+    :param draw_img: Boolean,
+    :return: main code, bbox, score, image
     """
     # open config file
     with open(json_config_file) as f:
         config = json.load(f)
-    with open(code_file) as f:
-        codes = f.read().splitlines()
+    with open(code_file) as fp:
+        codes = fp.read().splitlines()
+
+    # get size
+    size = kwargs.get('size', None)
 
     # analyse pkl file to get det result
     json_dict = model_test(det_lst, img_name, codes)
     det_df = pd.DataFrame(json_dict, columns=['name', 'category', 'bbox', 'score', 'bbox_score'])
 
-    #prio parameters
+    # prio parameters
     prio_weight = config['prio_weight']
     prio_lst = config['prio_order']
     if config['false_name'] not in prio_lst:
@@ -199,25 +200,17 @@ def default_rule(det_lst, img_path, img_name, json_config_file, code_file, draw_
     if config['other_name'] not in prio_lst:
         prio_lst.append(config['other_name'])
 
-    #change other name using threshold
+    # change other name using threshold
     det_df.loc[det_df['score'] < config['other_thr'], 'category'] = config['other_name']
 
-    # filtering
-    det_df = filter_code(det_df, 'RES06', 0.9)
-    det_df = filter_code(det_df, 'RES03', 0.85)
-    det_df = filter_code(det_df, 'AZ08', 0.6)
-    det_df = filter_code(det_df, 'STR02', 0.9, 'COM01')
-    det_df = filter_code(det_df, 'STR04', 0.8, 'COM01')
-    det_df = filter_code(det_df, 'COM03', 0.9)
-    det_df = filter_code(det_df, 'PLN01', 0.8)
-    det_df = filter_code(det_df, 'REP01', 0.9)
-    # det_df = filter_code(det_df, 'COM01', 0.4)
+    # CHECK AZ21/0
+    if size >= 40:
+        det_df.loc[det_df['category'] == 'PR', 'category'] = 'AZ21'
+    else:
+        det_df.loc[det_df['category'] == 'PR', 'category'] = '0'
 
-    # # check in
-    # if len(det_df) > 1:
-    #     if np.sum(det_df.category.values == 'QS') > 1:
-    #         code_df = det_df[det_df['category'] == 'QS']
-    #         det_df = check_in_filter(det_df, code_df, 0.9)
+    # filtering
+    # det_df = filter_code(det_df, 'COM01', 0.4)
 
     # nms
     # lst = []
@@ -227,11 +220,6 @@ def default_rule(det_lst, img_path, img_name, json_config_file, code_file, draw_
     # best_bboxes = nms(arr, 0.5)
     # det_df = det_df.iloc[best_bboxes, :]
 
-    # judge RES04
-    df_res05 = det_df[(det_df['category'] == 'RES05') & (det_df['score'] >= 0.6)]
-    if len(df_res05) >= 3:
-        det_df.loc[(det_df['category'] == 'RES05') & (det_df['score'] >= 0.6), 'category'] = 'RES04'
-
     # prio_check
     if len(det_df) != 0:
         Max_conf = det_df['score'].values.max()
@@ -240,13 +228,12 @@ def default_rule(det_lst, img_path, img_name, json_config_file, code_file, draw_
 
         final_code = prio_check(prio_lst, list(filtered_final['category']))
         best_score = filtered_final.loc[filtered_final['category'] == final_code, 'score'].max()
-        best_idx = int(filtered_final.loc[filtered_final['category'] == final_code, 'score'].argmax())
+        best_idx = filtered_final.loc[filtered_final['category'] == final_code, 'score'].argmax()
         best_bbox = filtered_final.loc[best_idx, 'bbox']
     else:
         final_code = config['false_name']
         best_bbox = []
         best_score = 1
-
 
     # draw images
     if draw_img:

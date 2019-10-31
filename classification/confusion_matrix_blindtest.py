@@ -17,7 +17,6 @@ def wrap_confusion_matrix(cm_df):
 
 def generate_confusion_matrix(det_result_file,
                               gt_result_file,
-                              labels,
                               output='confusion_matrix.xlsx',
                               code_weight=None):
     det_df = pd.read_excel(det_result_file)
@@ -29,6 +28,7 @@ def generate_confusion_matrix(det_result_file,
     print('{} images merged \n{} images det \n{} images gt'.format(len(merged_df), len(det_df), len(gt_df)))
     y_pred = list(merged_df['pred code'].values.astype(str))
     y_true = list(merged_df['true code'].values.astype(str))
+    labels = list(set(y_pred + y_true))
 
     cm = confusion_matrix(y_true, y_pred, labels)
     cm_df = pd.DataFrame(cm, index=labels, columns=labels)
@@ -47,20 +47,13 @@ def generate_confusion_matrix(det_result_file,
     cm_df = wrap_confusion_matrix(cm_df)
     print(cm_df)
 
-    cm_df.to_excel(output)
+    cm_df.to_csv(output)
 
 
 if __name__ == '__main__':
-    det_result = r'D:\Project\WHTM\result\21101\v5_bt2\classification_result.xlsx'
-    gt_result = r'D:\Project\WHTM\result\21101\v5_bt2\true_code.xlsx'
-    code_file = r'D:\Project\WHTM\code\21101.xlsx'
+    det_result = r'/data/sdv1/whtm/result/1GE02/1GE02_v3_test.xlsx'
+    gt_result = r'/data/sdv1/whtm/code/classification/ground_truth_result.xlsx'
 
-    code = CodeDictionary(code_file)
-    labels = code.code_list
-    labels.remove('QS')
-    labels.append('RES05')
-    labels.append('RES04')
     generate_confusion_matrix(det_result,
                               gt_result,
-                              labels,
-                              output=r'D:\Project\WHTM\result\21101\v5_bt2\confusion_matrix_21101_all_checked.xlsx')
+                              output=r'/data/sdv1/whtm/result/confusion_matrix_1GE02_AT.csv')
