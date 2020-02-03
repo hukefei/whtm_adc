@@ -7,7 +7,7 @@ import xml.dom.minidom
 import xml.etree.ElementTree as ET
 import numpy as np
 import copy
-from pascal_voc_io import PascalVocWriter
+from tools.pascal_voc_io import PascalVocWriter
 
 ImgPath = r'C:\Users\huker\Desktop\Desktop'
 AnnoPath = r'C:\Users\huker\Desktop\Desktop'

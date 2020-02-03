@@ -167,7 +167,7 @@ def model_test(result,
     return json_dict
 
 
-def default_rule(det_lst, img_path, img_name, json_config_file, code_file, draw_img=False, **kwargs):
+def default_rule(det_lst, img_path, img_name, config, codes, draw_img=False, **kwargs):
     """
 
     :param det_lst: list,
@@ -179,14 +179,9 @@ def default_rule(det_lst, img_path, img_name, json_config_file, code_file, draw_
     :param draw_img: Boolean,
     :return: main code, bbox, score, image
     """
-    # open config file
-    with open(json_config_file) as f:
-        config = json.load(f)
-    with open(code_file) as fp:
-        codes = fp.read().splitlines()
 
     # get size
-    size = kwargs.get('size', None)
+    size = kwargs.get('size', 0)
 
     # analyse pkl file to get det result
     json_dict = model_test(det_lst, img_name, codes)
@@ -210,7 +205,9 @@ def default_rule(det_lst, img_path, img_name, json_config_file, code_file, draw_
         det_df.loc[det_df['category'] == 'PR', 'category'] = '0'
 
     # filtering
-    # det_df = filter_code(det_df, 'COM01', 0.4)
+    # det_df = filter_code(det_df, 'AZ12', 0.9, '0')
+    # det_df = filter_code(det_df, 'AZ21', 0.9, '0')
+    # det_df = filter_code(det_df, 'AZ08', 0.9, '0')
 
     # nms
     # lst = []

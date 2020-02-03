@@ -1,8 +1,8 @@
 import os
 import xml.etree.ElementTree as ET
 
-defect_path = r'E:\21101\21101_new_20191029\add_union\modify'
-xml_path = r'E:\21101\21101_new_20191029\add_union\annotations'
+defect_path = r'D:\Project\WHTM\data\21101\modify'
+xml_path = r'D:\Project\WHTM\data\21101\final_dataset\annotations'
 
 for root, _, files in os.walk(defect_path):
     code_root = root.replace('/', '\\').split('\\')[-1]

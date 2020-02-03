@@ -51,9 +51,9 @@ def generate_confusion_matrix(det_result_file,
 
 
 if __name__ == '__main__':
-    det_result = r'/data/sdv1/whtm/result/1GE02/1GE02_v3_test.xlsx'
-    gt_result = r'/data/sdv1/whtm/code/classification/ground_truth_result.xlsx'
+    det_result = r'/data/sdv1/whtm/result/1GE02/1GE02_v3_bt1.xlsx'
+    gt_result = r'/data/sdv1/whtm/result/1GE02/1GE02_bt1_true.xlsx'
 
     generate_confusion_matrix(det_result,
                               gt_result,
-                              output=r'/data/sdv1/whtm/result/confusion_matrix_1GE02_AT.csv')
+                              output=r'/data/sdv1/whtm/result/1GE02/confusion_matrix_1GE02_bt.csv')

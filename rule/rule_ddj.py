@@ -102,6 +102,27 @@ def nms(bboxes, iou_threshold, sigma=0.3, method='nms'):
 #
 #     return original_df
 
+def check_concat(boxes1, boxes2, thr=0):
+    """
+    boxes: [xmin, ymin, xmax, ymax] format coordinates.
+    check if boxes1 contact boxes2
+    """
+    boxes1 = np.array(boxes1)
+    boxes2 = np.array(boxes2)
+
+    boxes1_area = (boxes1[..., 2] - boxes1[..., 0]) * (boxes1[..., 3] - boxes1[..., 1])
+    boxes2_area = (boxes2[..., 2] - boxes2[..., 0]) * (boxes2[..., 3] - boxes2[..., 1])
+
+    left_up = np.maximum(boxes1[..., :2], boxes2[..., :2])
+    right_down = np.minimum(boxes1[..., 2:4], boxes2[..., 2:4])
+
+    inter_section = np.maximum(right_down - left_up, 0.0)
+    inter_area = inter_section[..., 0] * inter_section[..., 1]
+    if inter_area > thr:
+        return True
+    else:
+        return False
+
 
 def show_and_save_images(img_path, img_name, bboxes, codes, out_dir=None):
     img = cv2.imread(os.path.join(img_path, img_name))
@@ -162,35 +183,31 @@ def model_test(result,
     for bbox in best_bboxes:
         coord = [round(i, 2) for i in bbox[:4]]
         conf, category = bbox[4], codes[int(bbox[5]) - 1]
-        json_dict.append({'name': img_name, 'category': category, 'bbox': coord, 'score': conf, 'bbox_score': bbox[:5],
-                          'xmin': coord[0], 'ymin': coord[1], 'xmax': coord[2], 'ymax': coord[3],
-                          'ctx': (coord[0]+coord[2])/2, 'cty': (coord[1]+coord[3])/2,
-                          'size': (coord[2]-coord[0])*(coord[3]-coord[1])})
+        json_dict.append({'name': img_name, 'category': category, 'bbox': coord, 'score': conf, 'bbox_score': bbox[:5]})
 
     return json_dict
 
 
 def default_rule(det_lst, img_path, img_name, config, codes, draw_img=False, **kwargs):
     """
-    default rule for station 21101
-    :param det_lst: detetion result of mmdetection in list format
-    :param img_path: image directory
-    :param img_name: image name
-    :param json_config_file: config file in json format
-    :param code_file: categories in txt format
-    :return:
-    main code
-    bbox
-    score
-    image with bbox and score
+    :param det_lst: list,
+    :param img_path: str,
+    :param img_name: str,
+    :param size: float, size from .gls file
+    :param json_config_file: str, config parameters in json format
+    :param code_file: str, code file in txt format
+    :param draw_img: Boolean,
+    :return: main code, bbox, score, image
     """
 
-    # analyse pkl file to get det result
-    json_dict = model_test(det_lst, img_name, codes)
-    det_df = pd.DataFrame(json_dict, columns=['name', 'category', 'bbox', 'score', 'bbox_score',
-                                              'xmin', 'ymin', 'xmax', 'ymax', 'ctx', 'cty', 'size'])
+    # get product id
+    product = kwargs.get('product', None)
 
-    #prio parameters
+    # convert list result to dict
+    json_dict = model_test(det_lst, img_name, codes)
+    det_df = pd.DataFrame(json_dict, columns=['name', 'category', 'bbox', 'score', 'bbox_score'])
+
+    # prio parameters
     prio_weight = config['prio_weight']
     prio_lst = config['prio_order']
     if config['false_name'] not in prio_lst:
@@ -198,25 +215,75 @@ def default_rule(det_lst, img_path, img_name, config, codes, draw_img=False, **k
     if config['other_name'] not in prio_lst:
         prio_lst.append(config['other_name'])
 
-    #change other name using threshold
+    # change other name using threshold
     det_df.loc[det_df['score'] < config['other_thr'], 'category'] = config['other_name']
 
-    # filtering
-    # det_df = filter_code(det_df, 'RES06', 0.9)
-    # det_df = filter_code(det_df, 'RES03', 0.85)
-    # det_df = filter_code(det_df, 'AZ08', 0.6)
-    # det_df = filter_code(det_df, 'STR02', 0.9, 'COM01')
-    # det_df = filter_code(det_df, 'STR04', 0.8, 'COM01')
-    # det_df = filter_code(det_df, 'COM03', 0.9)
-    # det_df = filter_code(det_df, 'PLN01', 0.8)
-    # det_df = filter_code(det_df, 'REP01', 0.9)
-    # det_df = filter_code(det_df, 'COM01', 0.4)
+    # filter pattern for r, g, b
+    pattern = img_name.split('_')[1][0]
+    if pattern == 'R':
+        det_df = filter_code(det_df, 'V06-R', 0.7)
+        det_df = filter_code(det_df, 'V06-G', 1.1)
+        det_df = filter_code(det_df, 'V06-B', 1.1)
+        det_df = filter_code(det_df, 'E07-R', 0.9)
+        det_df = filter_code(det_df, 'E07-G', 1.1)
+        det_df = filter_code(det_df, 'E07-B', 1.1)
+        det_df = filter_code(det_df, 'E02-R', 0.8)
+        det_df = filter_code(det_df, 'E02-G', 1.1)
+        det_df = filter_code(det_df, 'E02-B', 1.1)
+    if pattern == 'G':
+        det_df = filter_code(det_df, 'V06-R', 1.1)
+        det_df = filter_code(det_df, 'V06-G', 0.7)
+        det_df = filter_code(det_df, 'V06-B', 1.1)
+        det_df = filter_code(det_df, 'E07-R', 1.1)
+        det_df = filter_code(det_df, 'E07-G', 0.9)
+        det_df = filter_code(det_df, 'E07-B', 1.1)
+        det_df = filter_code(det_df, 'E02-R', 1.1)
+        det_df = filter_code(det_df, 'E02-G', 0.8)
+        det_df = filter_code(det_df, 'E02-B', 1.1)
+    if pattern == 'B':
+        det_df = filter_code(det_df, 'V06-R', 1.1)
+        det_df = filter_code(det_df, 'V06-G', 1.1)
+        det_df = filter_code(det_df, 'V06-B', 0.7)
+        det_df = filter_code(det_df, 'E07-R', 1.1)
+        det_df = filter_code(det_df, 'E07-G', 1.1)
+        det_df = filter_code(det_df, 'E07-B', 0.9)
+        det_df = filter_code(det_df, 'E02-R', 1.1)
+        det_df = filter_code(det_df, 'E02-G', 1.1)
+        det_df = filter_code(det_df, 'E02-B', 0.8)
+    if pattern == 'W':
+        det_df = filter_code(det_df, 'V06-R', 0.4)
+        det_df = filter_code(det_df, 'V06-G', 0.4)
+        det_df = filter_code(det_df, 'V06-B', 0.4)
+        det_df = filter_code(det_df, 'E07-R', 0.9)
+        det_df = filter_code(det_df, 'E07-G', 0.9)
+        det_df = filter_code(det_df, 'E07-B', 0.9)
+        det_df = filter_code(det_df, 'E02-R', 0.8)
+        det_df = filter_code(det_df, 'E02-G', 0.8)
+        det_df = filter_code(det_df, 'E02-B', 0.8)
 
-    # # check in
-    # if len(det_df) > 1:
-    #     if np.sum(det_df.category.values == 'QS') > 1:
-    #         code_df = det_df[det_df['category'] == 'QS']
-    #         det_df = check_in_filter(det_df, code_df, 0.9)
+    # filtering
+    det_df = filter_code(det_df, 'notch', 0.6)
+    det_df = filter_code(det_df, 'L01', 0.5)
+    det_df = filter_code(det_df, 'L02', 0.5)
+    det_df = filter_code(det_df, 'L09', 0.5)
+    det_df = filter_code(det_df, 'L10', 0.5)
+    det_df = filter_code(det_df, 'V04', 0.8)
+    det_df = filter_code(det_df, 'V01', 0.9)
+    det_df = filter_code(det_df, 'V03', 0.5)
+    det_df = filter_code(det_df, 'M07', 0.7)
+    det_df = filter_code(det_df, 'M07-64', 0.6)
+    det_df = filter_code(det_df, 'V99', 0.3)
+    det_df = filter_code(det_df, 'M97', 0.3)
+
+    # filter M97
+    chip = img_name.split('_')[0]
+    position = chip[-4:]
+    if (position[:2] not in ('01', '05')) and (position[2:] not in ('01', '18')):
+        det_df = filter_code(det_df, 'M97', 1.1)
+
+    # filter V04
+    if 'V04' in det_df['category']:
+        det_df = filter_code(det_df, 'V01', 1.1)
 
     # nms
     # lst = []
@@ -226,60 +293,52 @@ def default_rule(det_lst, img_path, img_name, config, codes, draw_img=False, **k
     # best_bboxes = nms(arr, 0.5)
     # det_df = det_df.iloc[best_bboxes, :]
 
-    # judge RES04
-    check = (det_df['category'] == 'RES05') & (det_df['score'] >= 0.3) # adc judge res04
-    # check1 = (det_df['category'] == 'RES05') & (det_df['score'] >= 0.3) # transfer to manual path res04
-    if sum(check) >= 3:
-        det_df.loc[check, 'category'] = 'RES04'
-        det_df.loc[check, 'score'] = np.average(det_df.loc[check, 'score'])
-
-
-    # CHECK STR04/STR02
-    if 'STR04' in det_df['category'].values:
-        for idx in det_df[det_df['category'] == 'STR04'].index:
-            bbox = det_df.loc[idx, 'bbox']
-            width = bbox[2] - bbox[0]
-            height = bbox[3] - bbox[1]
-            if max(width/6, height/6) >= 50:
-                det_df.loc[idx, 'category'] = 'STR02'
-
-    # CHECK COM01/COM17
-    if 'COM01' in det_df['category'].values:
-        for idx in det_df[det_df['category'] == 'COM01'].index:
-            bbox = det_df.loc[idx, 'bbox']
-            width = bbox[2] - bbox[0]
-            height = bbox[3] - bbox[1]
-            if max(width / 6, height / 6) >= 70:
-                det_df.loc[idx, 'category'] = 'COM17'
-
-    # CHECK COM22/COM18
-    if 'COM22' in det_df['category'].values:
-        for idx in det_df[det_df['category'] == 'COM22'].index:
-            bbox = det_df.loc[idx, 'bbox']
-            width = bbox[2] - bbox[0]
-            height = bbox[3] - bbox[1]
-            if max(width / 6, height / 6) >= 70:
-                det_df.loc[idx, 'category'] = 'COM18'
-
-    # FILTER MARGIN
-    det_df = det_df[det_df.cty <= 1850]
-
-
     # prio_check
-    if len(det_df) != 0:
-        Max_conf = det_df['score'].values.max()
-        prio_thr = Max_conf * prio_weight
-        filtered_final = det_df[det_df['score'] >= prio_thr]
+    # if len(det_df) != 0:
+    #     Max_conf = det_df['score'].values.max()
+    #     prio_thr = Max_conf * prio_weight
+    #     filtered_final = det_df[det_df['score'] >= prio_thr]
+    #
+    #     final_code = prio_check(prio_lst, list(filtered_final['category']))
+    #     best_score = filtered_final.loc[filtered_final['category'] == final_code, 'score'].max()
+    #     best_idx = filtered_final.loc[filtered_final['category'] == final_code, 'score'].argmax()
+    #     best_bbox = filtered_final.loc[best_idx, 'bbox']
+    # else:
+    #     final_code = config['false_name']
+    #     best_bbox = []
+    #     best_score = 1
 
-        final_code = prio_check(prio_lst, list(filtered_final['category']))
-        best_score = filtered_final.loc[filtered_final['category'] == final_code, 'score'].max()
-        best_idx = int(filtered_final.loc[filtered_final['category'] == final_code, 'score'].argmax())
-        best_bbox = filtered_final.loc[best_idx, 'bbox']
-    else:
-        final_code = config['false_name']
-        best_bbox = []
-        best_score = 1
+    # judge C08
+    if product == '639' and ('notch' in det_df['category'].values):
+        notch_bbox = det_df.loc[det_df['category'] == 'notch', 'bbox'].values[0]
+        for idx in det_df.index:
+            cate = det_df.loc[idx, 'category']
+            if cate in ('L01', 'L02', 'L09', 'L10'):
+                bbox = det_df.loc[idx, 'bbox']
+                if check_concat(bbox, notch_bbox):
+                    det_df.loc[idx, 'category'] = 'C08'
 
+    # judge L17
+    cates = det_df['category'].values
+    idx_lst = []
+    if ('L01' in cates or 'L02' in cates) and ('L09' in cates or 'L10' in cates):
+        for idx1 in det_df[(det_df['category'] == 'L01') | (det_df['category'] == 'L02')].index:
+            for idx2 in det_df[(det_df['category'] == 'L09') | (det_df['category'] == 'L10')].index:
+                bbox1 = det_df.loc[idx1, 'bbox']
+                bbox2 = det_df.loc[idx2, 'bbox']
+                if check_concat(bbox1, bbox2):
+                    idx_lst.append(idx1)
+                    idx_lst.append(idx2)
+    idx_lst = list(set(idx_lst))
+    det_df.loc[idx_lst, 'category'] = 'L17'
+
+    # delect notch
+    det_df = filter_code(det_df, 'notch', 1.1)
+
+    # ET judge
+    final_code = list(det_df['category'].values)
+    best_bbox = list(det_df['bbox'].values)
+    best_score = list(det_df['score'].values)
 
     # draw images
     if draw_img:
@@ -304,11 +363,6 @@ if __name__ == '__main__':
 
     with open(result_pkl, 'rb') as f:
         result_lst = pickle.load(f)
-    # open config file
-    with open(config_file) as f:
-        config = json.load(f)
-    with open(code_file) as f:
-        codes = f.read().splitlines()
 
     main_code, bbox, score, img = default_rule(result_lst, img_path, img_name, config_file, code_file)
     print(main_code, bbox, score)

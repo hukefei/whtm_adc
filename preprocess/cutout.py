@@ -5,15 +5,11 @@ import cv2
 import os, json
 import random, shutil
 import numpy as np
-from preprocess.pascal_voc_io import PascalVocWriter
+from tools.pascal_voc_io import PascalVocWriter
 from utils.Code_dictionary import CodeDictionary
 
 
-p = np.array([0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-NUM_CLASSES = 12
-assert len(p) == NUM_CLASSES
-HEIGHT = 2056
-WIDTH = 2448
+
 
 def get_gt_boxes(json_file):
     with open(json_file, 'r') as f:
@@ -124,13 +120,19 @@ def write_xmls(foldername, gt_dict, num_raw_imgs, save_dir, code_dict):
 
 
 if __name__ == '__main__':
-    gt_json = r'D:\Project\WHTM\data\21101\train_test_data\train.json'
-    defect_dir = r'D:\Project\WHTM\data\21101\train_test_data\train'
-    normal_dir = r'E:\21101\21101_new_20191029\add_union\false'
-    new_json = r'E:\21101\21101_new_20191029\add_union\cutout_train.json'
-    save_dir = r'E:\21101\21101_new_20191029\add_union\cutout_images'
-    xml_dir = r'E:\21101\21101_new_20191029\add_union\cutout_xmls'
-    code_file = r'D:\Project\WHTM\code\21101.txt'
+    p = np.array([0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    NUM_CLASSES = 15
+    assert len(p) == NUM_CLASSES
+    HEIGHT = 2056
+    WIDTH = 2448
+
+    gt_json = r'D:\Project\WHTM\data\21101\train_test\train.json'
+    defect_dir = r'D:\Project\WHTM\data\21101\train_test\train'
+    normal_dir = r'D:\Project\WHTM\data\21101\final_dataset\COM99'
+    new_json = r'D:\Project\WHTM\data\21101\train_test\cutout_train.json'
+    save_dir = r'D:\Project\WHTM\data\21101\train_test\cutout_images'
+    xml_dir = r'D:\Project\WHTM\data\21101\train_test\cutout_xmls'
+    code_file = r'D:\Project\WHTM\document\21101\classes.txt'
 
 
 

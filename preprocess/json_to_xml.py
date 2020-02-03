@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os, json, shutil
-from preprocess.pascal_voc_io import PascalVocWriter
+from tools.pascal_voc_io import PascalVocWriter
 
 def load_json(filepath):
     f = open(filepath, 'r')

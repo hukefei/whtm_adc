@@ -4,10 +4,9 @@ import shutil
 
 file_path = r'E:\1GE02\final_dataset\annotations'
 
-site_code = ['AZ12',
-             'PR',
-             '0',
-             'AZ08']
+code_file = r'D:\Project\WHTM\document\21101\classes.txt'
+with open(code_file) as f:
+    site_code = f.read().splitlines()
 
 for root, dirs, files in os.walk(file_path):
     for file in files:

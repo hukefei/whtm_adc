@@ -96,7 +96,7 @@ if __name__ == '__main__':
                 name_lst.append(file[:-4])
 
     json_file = r'E:\1GE02\1GE02_train_test_data\train.json'
-    code_file = r'E:\1GE02\1GE02.txt'
+    code_file = r'E:\1GE02\document\classes.txt'
     code = CodeDictionary(code_file)
 
     convert(name_lst, file_dir, json_file, code)
