@@ -44,6 +44,8 @@ def convert(name_list, xml_dir, save_json, code_dictionary):
         name = name.strip()
         print("Processing %s" % name)
         xml_f = os.path.join(xml_dir, name + '.xml')
+        if not os.path.exists(xml_f):
+            continue
         tree = ET.parse(xml_f)
         root = tree.getroot()
 
@@ -88,15 +90,16 @@ def convert(name_list, xml_dir, save_json, code_dictionary):
 
 
 if __name__ == '__main__':
-    file_dir = r'E:\1GE02\1GE02_train_test_data\train'
+    file_dir = r'F:\WHTM\1GE02\data\1GE02\final_dataset\annotations'
+    img_dir = r'F:\WHTM\1GE02\data\1GE02\final_dataset\images'
     name_lst = []
-    for root, _, files in os.walk(file_dir):
+    for root, _, files in os.walk(img_dir):
         for file in files:
             if file.endswith('jpg') or file.endswith('JPG'):
                 name_lst.append(file[:-4])
 
-    json_file = r'E:\1GE02\1GE02_train_test_data\train.json'
-    code_file = r'E:\1GE02\document\classes.txt'
+    json_file = r'F:\WHTM\1GE02\data\1GE02\final_dataset\all.json'
+    code_file = r'F:\WHTM\1GE02\data\1GE02\final_dataset\classes.txt'
     code = CodeDictionary(code_file)
 
     convert(name_lst, file_dir, json_file, code)

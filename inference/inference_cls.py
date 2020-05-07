@@ -1,20 +1,22 @@
-from rule.rule_ddj import default_rule
+from rule.rule_1A902 import default_rule
 import cv2
 import os, glob
 import pandas as pd
 import pickle
 import json
+import shutil
 
 
 def inference_cls(result_file,
-                  img_path,
-                  config_file,
+                  imgs,
+                  config,
                   code_file,
-                  output_file,
+                  output,
                   img_save_path,
                   size_file=None,
                   save_img=False):
-    imgs = glob.glob(os.path.join(img_path, '*.jpg'))
+    if not os.path.exists(img_save_path):
+        os.makedirs(img_save_path)
 
     with open(result_file, 'rb') as f:
         results = pickle.load(f)
@@ -22,7 +24,11 @@ def inference_cls(result_file,
     cls_result_lst = []
     for i, result in enumerate(results):
         img = imgs[i]
+        if result == []:
+            print('skip image {}'.format(img))
+            continue
         img_name = img.replace('\\', '/').split('/')[-1]
+        gt_code = img.replace('\\', '/').split('/')[-2]
         print('processing {}'.format(img_name))
         if size_file is not None:
             with open(size_file, 'r') as f:
@@ -34,23 +40,32 @@ def inference_cls(result_file,
                 s = int(size_dict[img_name])
         else:
             s = None
-        main_code, bbox, score, img = default_rule(result, img_path, img_name, config_file, code_file, save_img, product='647')
+        main_code, bbox, score, img_ = default_rule(result, img, img_name, config, code_file, save_img)
         print(main_code, bbox, score)
-        cls_result_lst.append({'image name': img_name, 'pred code': main_code, 'defect score': score})
+
         if save_img:
-            cv2.imwrite(os.path.join(img_save_path, img_name), img)
+            cv2.imwrite(os.path.join(img_save_path, img_name), img_)
+
+        if main_code != gt_code:
+            save_path = os.path.join(output, gt_code, main_code)
+            if not os.path.exists(save_path):
+                os.makedirs(save_path)
+            shutil.copy(img, os.path.join(save_path, img_name))
+        cls_result_lst.append({'image name': img_name, 'pred code': main_code, 'defect score': score, 'oic code': gt_code})
+
 
     cls_df = pd.DataFrame(cls_result_lst)
-    cls_df.to_excel(output_file)
+    cls_df.to_excel(os.path.join(output, 'result.xlsx'))
+
 
 
 if __name__ == '__main__':
-    img_path = r'D:\Project\WHTM\data\ddj\select_test'
-    pkl_file = r'D:\Project\WHTM\result\ddj\1206\ddj_test_1206.pkl'
-    json_file = r'E:\diandengji\documents\rule.json'
-    code_file = r'E:\diandengji\documents\classes.txt'
-    output = r'E:\diandengji\result\1206\ddj_1206at_filtered.xlsx'
-    img_save_path = r'E:\diandengji\result\1206\images'
+    img_path = r'/data/sdv1/whtm/ddj/data/0326test/diandengji_0319_add/'
+    pkl_file = r'/data/sdv1/whtm/ddj/result/ovli_0331.pkl'
+    json_file = r'/data/sdv1/whtm/ddj/data/0320/rule.json'
+    code_file = r'/data/sdv1/whtm/ddj/data/0320/classes.txt'
+    output = r'/data/sdv1/whtm/ddj/result/0331/ovli_0331.xlsx'
+    img_save_path = r'/data/sdv1/whtm/ddj/result/0331/images'
     # size_file = r'/data/sdv1/whtm/document/1GE02/1GE02_bt1_img_size.json'
     size_file = None
     if not os.path.exists(img_save_path):

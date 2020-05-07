@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" serverName="shuzhilian@172.27.9.82:22">
+  <component name="PublishConfigData" autoUpload="Always" serverName="mmdet">
     <serverData>
       <paths name="chengdu">
         <serverdata>
           <mappings>
-            <mapping local="$PROJECT_DIR$" web="/" />
+            <mapping deploy="/data/sdv1/whtm/code" local="$PROJECT_DIR$" web="/" />
           </mappings>
         </serverdata>
       </paths>
-      <paths name="shuzhilian@172.27.9.82:22">
+      <paths name="mmdet">
         <serverdata>
           <mappings>
             <mapping deploy="/data/sdv1/whtm/code" local="$PROJECT_DIR$" />
@@ -17,5 +17,6 @@
         </serverdata>
       </paths>
     </serverData>
+    <option name="myAutoUpload" value="ALWAYS" />
   </component>
 </project>

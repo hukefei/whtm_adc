@@ -28,81 +28,7 @@ def bboxes_iou(boxes1, boxes2):
     return ious
 
 
-def nms(bboxes, iou_threshold, sigma=0.3, method='nms'):
-    """
-    Note: soft-nms, https://arxiv.org/pdf/1704.04503.pdf
-          https://github.com/bharatsingh430/soft-nms
-    """
-    best_bboxes_idx = []
-
-    while len(bboxes) > 0:
-        max_ind = np.argmax(bboxes[:, 4])
-        best_bbox = bboxes[max_ind]
-        best_bboxes_idx.append(max_ind)
-
-        bboxes = np.concatenate([bboxes[: max_ind], bboxes[max_ind + 1:]])
-        iou = bboxes_iou(best_bbox[np.newaxis, :4], bboxes[:, :4])
-        weight = np.ones((len(iou),), dtype=np.float32)
-
-        assert method in ['nms', 'soft-nms']
-        if method == 'nms':
-            iou_mask = iou > iou_threshold
-            weight[iou_mask] = 0.0
-        if method == 'soft-nms':
-            weight = np.exp(-(1.0 * iou ** 2 / sigma))
-
-        bboxes[:, 4] = bboxes[:, 4] * weight
-        score_mask = bboxes[:, 4] > 0.
-        bboxes = bboxes[score_mask]
-
-    return best_bboxes_idx
-
-
-# def check_in(boxes1, boxes2, thr=0.9):
-#     """
-#     boxes: [xmin, ymin, xmax, ymax, score, class] format coordinates.
-#     check if boxes2 in boxes1 using threshold thr.
-#     """
-#     boxes1 = np.array(boxes1)
-#     boxes2 = np.array(boxes2)
-#
-#     boxes1_area = (boxes1[..., 2] - boxes1[..., 0]) * (boxes1[..., 3] - boxes1[..., 1])
-#     boxes2_area = (boxes2[..., 2] - boxes2[..., 0]) * (boxes2[..., 3] - boxes2[..., 1])
-#
-#     left_up = np.maximum(boxes1[..., :2], boxes2[..., :2])
-#     right_down = np.minimum(boxes1[..., 2:4], boxes2[..., 2:4])
-#
-#     inter_section = np.maximum(right_down - left_up, 0.0)
-#     inter_area = inter_section[..., 0] * inter_section[..., 1]
-#     if inter_area / boxes2_area >= thr:
-#         return 2
-#     elif inter_area / boxes1_area >= thr:
-#         return 1
-#     else:
-#         return 0
-#
-#
-# def check_in_filter(original_df, df, thr=0.9):
-#     """
-#     filter result df using check in function.
-#     :param df:
-#     :param thr: threshold
-#     :return: filtered df
-#     """
-#     delect_bbox = []
-#     for i in itertools.combinations(df.index, 2):
-#         bbox1 = df.loc[i[0], 'bbox']
-#         bbox2 = df.loc[i[1], 'bbox']
-#         check = check_in(bbox1, bbox2, thr)
-#         if check:
-#             delect_bbox.append(i[check - 1])
-#     delect_bbox = set(delect_bbox)
-#     for bbox_idx in delect_bbox:
-#         original_df.drop(index=bbox_idx, inplace=True)
-#
-#     return original_df
-
-def check_concat(boxes1, boxes2, thr=0):
+def check_contact(boxes1, boxes2, thr=0):
     """
     boxes: [xmin, ymin, xmax, ymax] format coordinates.
     check if boxes1 contact boxes2
@@ -201,79 +127,18 @@ def default_rule(det_lst, img_path, img_name, config, codes, draw_img=False, **k
     """
 
     # get product id
-    product = kwargs.get('product', None)
+    product = kwargs.get('product', '')
 
     # convert list result to dict
     json_dict = model_test(det_lst, img_name, codes)
     det_df = pd.DataFrame(json_dict, columns=['name', 'category', 'bbox', 'score', 'bbox_score'])
 
-    # prio parameters
-    prio_weight = config['prio_weight']
-    prio_lst = config['prio_order']
-    if config['false_name'] not in prio_lst:
-        prio_lst.append(config['false_name'])
-    if config['other_name'] not in prio_lst:
-        prio_lst.append(config['other_name'])
-
     # change other name using threshold
     det_df.loc[det_df['score'] < config['other_thr'], 'category'] = config['other_name']
 
     # filter pattern for r, g, b
-    pattern = img_name.split('_')[1][0]
-    if pattern == 'R':
-        det_df = filter_code(det_df, 'V06-R', 0.7)
-        det_df = filter_code(det_df, 'V06-G', 1.1)
-        det_df = filter_code(det_df, 'V06-B', 1.1)
-        det_df = filter_code(det_df, 'E07-R', 0.9)
-        det_df = filter_code(det_df, 'E07-G', 1.1)
-        det_df = filter_code(det_df, 'E07-B', 1.1)
-        det_df = filter_code(det_df, 'E02-R', 0.8)
-        det_df = filter_code(det_df, 'E02-G', 1.1)
-        det_df = filter_code(det_df, 'E02-B', 1.1)
-    if pattern == 'G':
-        det_df = filter_code(det_df, 'V06-R', 1.1)
-        det_df = filter_code(det_df, 'V06-G', 0.7)
-        det_df = filter_code(det_df, 'V06-B', 1.1)
-        det_df = filter_code(det_df, 'E07-R', 1.1)
-        det_df = filter_code(det_df, 'E07-G', 0.9)
-        det_df = filter_code(det_df, 'E07-B', 1.1)
-        det_df = filter_code(det_df, 'E02-R', 1.1)
-        det_df = filter_code(det_df, 'E02-G', 0.8)
-        det_df = filter_code(det_df, 'E02-B', 1.1)
-    if pattern == 'B':
-        det_df = filter_code(det_df, 'V06-R', 1.1)
-        det_df = filter_code(det_df, 'V06-G', 1.1)
-        det_df = filter_code(det_df, 'V06-B', 0.7)
-        det_df = filter_code(det_df, 'E07-R', 1.1)
-        det_df = filter_code(det_df, 'E07-G', 1.1)
-        det_df = filter_code(det_df, 'E07-B', 0.9)
-        det_df = filter_code(det_df, 'E02-R', 1.1)
-        det_df = filter_code(det_df, 'E02-G', 1.1)
-        det_df = filter_code(det_df, 'E02-B', 0.8)
-    if pattern == 'W':
-        det_df = filter_code(det_df, 'V06-R', 0.4)
-        det_df = filter_code(det_df, 'V06-G', 0.4)
-        det_df = filter_code(det_df, 'V06-B', 0.4)
-        det_df = filter_code(det_df, 'E07-R', 0.9)
-        det_df = filter_code(det_df, 'E07-G', 0.9)
-        det_df = filter_code(det_df, 'E07-B', 0.9)
-        det_df = filter_code(det_df, 'E02-R', 0.8)
-        det_df = filter_code(det_df, 'E02-G', 0.8)
-        det_df = filter_code(det_df, 'E02-B', 0.8)
-
-    # filtering
-    det_df = filter_code(det_df, 'notch', 0.6)
-    det_df = filter_code(det_df, 'L01', 0.5)
-    det_df = filter_code(det_df, 'L02', 0.5)
-    det_df = filter_code(det_df, 'L09', 0.5)
-    det_df = filter_code(det_df, 'L10', 0.5)
-    det_df = filter_code(det_df, 'V04', 0.8)
-    det_df = filter_code(det_df, 'V01', 0.9)
-    det_df = filter_code(det_df, 'V03', 0.5)
-    det_df = filter_code(det_df, 'M07', 0.7)
-    det_df = filter_code(det_df, 'M07-64', 0.6)
-    det_df = filter_code(det_df, 'V99', 0.3)
-    det_df = filter_code(det_df, 'M97', 0.3)
+    for k, v in config['filtering_thr'].items():
+        det_df = filter_code(det_df, k, v)
 
     # filter M97
     chip = img_name.split('_')[0]
@@ -281,41 +146,24 @@ def default_rule(det_lst, img_path, img_name, config, codes, draw_img=False, **k
     if (position[:2] not in ('01', '05')) and (position[2:] not in ('01', '18')):
         det_df = filter_code(det_df, 'M97', 1.1)
 
-    # filter V04
+    # filter V01
     if 'V04' in det_df['category']:
         det_df = filter_code(det_df, 'V01', 1.1)
+        det_df = filter_code(det_df, 'V03', 1.1)
+        det_df = filter_code(det_df, 'V07', 1.1)
+    if 'V01' in det_df['category']:
+        det_df = filter_code(det_df, 'V03', 1.1)
+        det_df = filter_code(det_df, 'V07', 1.1)
 
-    # nms
-    # lst = []
-    # for i in range(len(det_df)):
-    #     lst.append(det_df.loc[det_df.index[i], 'bbox_score'])
-    # arr = np.array(lst)
-    # best_bboxes = nms(arr, 0.5)
-    # det_df = det_df.iloc[best_bboxes, :]
-
-    # prio_check
-    # if len(det_df) != 0:
-    #     Max_conf = det_df['score'].values.max()
-    #     prio_thr = Max_conf * prio_weight
-    #     filtered_final = det_df[det_df['score'] >= prio_thr]
-    #
-    #     final_code = prio_check(prio_lst, list(filtered_final['category']))
-    #     best_score = filtered_final.loc[filtered_final['category'] == final_code, 'score'].max()
-    #     best_idx = filtered_final.loc[filtered_final['category'] == final_code, 'score'].argmax()
-    #     best_bbox = filtered_final.loc[best_idx, 'bbox']
-    # else:
-    #     final_code = config['false_name']
-    #     best_bbox = []
-    #     best_score = 1
 
     # judge C08
-    if product == '639' and ('notch' in det_df['category'].values):
+    if ('639' in product) and ('notch' in det_df['category'].values):
         notch_bbox = det_df.loc[det_df['category'] == 'notch', 'bbox'].values[0]
         for idx in det_df.index:
             cate = det_df.loc[idx, 'category']
             if cate in ('L01', 'L02', 'L09', 'L10'):
                 bbox = det_df.loc[idx, 'bbox']
-                if check_concat(bbox, notch_bbox):
+                if check_contact(bbox, notch_bbox):
                     det_df.loc[idx, 'category'] = 'C08'
 
     # judge L17
@@ -326,7 +174,7 @@ def default_rule(det_lst, img_path, img_name, config, codes, draw_img=False, **k
             for idx2 in det_df[(det_df['category'] == 'L09') | (det_df['category'] == 'L10')].index:
                 bbox1 = det_df.loc[idx1, 'bbox']
                 bbox2 = det_df.loc[idx2, 'bbox']
-                if check_concat(bbox1, bbox2):
+                if check_contact(bbox1, bbox2):
                     idx_lst.append(idx1)
                     idx_lst.append(idx2)
     idx_lst = list(set(idx_lst))

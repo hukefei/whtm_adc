@@ -59,7 +59,7 @@ def nms(bboxes, iou_threshold, sigma=0.3, method='nms'):
 
 
 def show_and_save_images(img_path, img_name, bboxes, codes, out_dir=None):
-    img = cv2.imread(os.path.join(img_path, img_name))
+    img = cv2.imread(img_path)
     for i, bbox in enumerate(bboxes):
         bbox = np.array(bbox)
         bbox_int = bbox[:4].astype(np.int32)
@@ -127,35 +127,25 @@ def model_test(result,
 
 def default_rule(det_lst, img_path, img_name, config, codes, draw_img=False, **kwargs):
     """
-
-    :param det_lst: list,
-    :param img_path: str,
-    :param img_name: str,
-    :param size: float, size from .gls file
-    :param json_config_file: str, config parameters in json format
-    :param code_file: str, code file in txt format
-    :param draw_img: Boolean,
-    :return: main code, bbox, score, image
+    default rule for station 21101
+    :param det_lst: detetion result of mmdetection in list format
+    :param img_path: image directory
+    :param img_name: image name
+    :param json_config_file: config file in json format
+    :param code_file: categories in txt format
+    :return:
+    main code
+    bbox
+    score
+    image with bbox and score
     """
-
-    # get size
-    size = kwargs.get('size', 0)
-    sizeX = kwargs.get('sizeX', 0)
-    sizeY = kwargs.get('sizeY', 0)
-    unit_id = kwargs.get('unit_id', None)
-
-    size = 0 if size is None else size
-    sizeX = 0 if sizeX is None else sizeX
-    sizeY = 0 if sizeY is None else sizeY
-    if unit_id == 'A1AOI800':
-        size = max(size, sizeX, sizeY)
 
     # analyse pkl file to get det result
     json_dict = model_test(det_lst, img_name, codes)
     det_df = pd.DataFrame(json_dict, columns=['name', 'category', 'bbox', 'score', 'bbox_score',
                                               'xmin', 'ymin', 'xmax', 'ymax', 'ctx', 'cty', 'size'])
 
-    # prio parameters
+    #prio parameters
     prio_weight = config['prio_weight']
     prio_lst = config['prio_order']
     if config['false_name'] not in prio_lst:
@@ -163,22 +153,37 @@ def default_rule(det_lst, img_path, img_name, config, codes, draw_img=False, **k
     if config['other_name'] not in prio_lst:
         prio_lst.append(config['other_name'])
 
-    # change other name using threshold
+    #change other name using threshold
     det_df.loc[det_df['score'] < config['other_thr'], 'category'] = config['other_name']
 
-    # CHECK AZ10/0 FROM PAD
-    if size >= 40:
-        det_df.loc[det_df['category'] == 'PAD', 'category'] = 'AZ10'
-    else:
-        det_df.loc[det_df['category'] == 'PAD', 'category'] = '0'
+    # judge RES04
+    check = (det_df['category'] == 'RES05') & (det_df['score'] >= 0.2) # adc judge res04
+    # check1 = (det_df['category'] == 'RES05') & (det_df['score'] >= 0.3) # transfer to manual path res04
+    if sum(check) >= 3:
+        det_df.loc[check, 'category'] = 'RES04'
+        det_df.loc[check, 'score'] = np.average(det_df.loc[check, 'score'])
 
-    # CHECK AZ21/0 FROM PR
-    if size >= 40:
-        det_df.loc[det_df['category'] == 'PR', 'category'] = 'AZ21'
-    else:
-        det_df.loc[det_df['category'] == 'PR', 'category'] = '0'
 
-    # PRIO CHECK
+    # CHECK COM01/COM17
+    if 'COM01' in det_df['category'].values:
+        for idx in det_df[det_df['category'] == 'COM01'].index:
+            bbox = det_df.loc[idx, 'bbox']
+            width = bbox[2] - bbox[0]
+            height = bbox[3] - bbox[1]
+            if max(width / 5, height / 5) >= 100:
+                det_df.loc[idx, 'category'] = 'COM17'
+
+    # CHECK COM22/COM18
+    if 'COM22' in det_df['category'].values:
+        for idx in det_df[det_df['category'] == 'COM22'].index:
+            bbox = det_df.loc[idx, 'bbox']
+            width = bbox[2] - bbox[0]
+            height = bbox[3] - bbox[1]
+            if max(width / 5, height / 5) >= 100:
+                det_df.loc[idx, 'category'] = 'COM18'
+
+
+    # prio_check
     if len(det_df) != 0:
         Max_conf = det_df['score'].values.max()
         prio_thr = Max_conf * prio_weight
@@ -186,16 +191,13 @@ def default_rule(det_lst, img_path, img_name, config, codes, draw_img=False, **k
 
         final_code = prio_check(prio_lst, list(filtered_final['category']))
         best_score = filtered_final.loc[filtered_final['category'] == final_code, 'score'].max()
-        best_idx = filtered_final.loc[filtered_final['category'] == final_code, 'score'].argmax()
+        best_idx = int(filtered_final.loc[filtered_final['category'] == final_code, 'score'].argmax())
         best_bbox = filtered_final.loc[best_idx, 'bbox']
     else:
         final_code = config['false_name']
         best_bbox = []
         best_score = 1
 
-    # CHANGE 0 TO AZ21 IF SIZE>40
-    if (size >= 40) and (final_code == '0'):
-        final_code = 'AZ21'
 
     # draw images
     if draw_img:
@@ -220,6 +222,11 @@ if __name__ == '__main__':
 
     with open(result_pkl, 'rb') as f:
         result_lst = pickle.load(f)
+    # open config file
+    with open(config_file) as f:
+        config = json.load(f)
+    with open(code_file) as f:
+        codes = f.read().splitlines()
 
     main_code, bbox, score, img = default_rule(result_lst, img_path, img_name, config_file, code_file)
     print(main_code, bbox, score)

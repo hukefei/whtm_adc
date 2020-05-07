@@ -7,6 +7,7 @@ import pickle
 import cv2
 
 
+
 def bboxes_iou(boxes1, boxes2):
     """
     boxes: [xmin, ymin, xmax, ymax, score, class] format coordinates.
@@ -26,6 +27,7 @@ def bboxes_iou(boxes1, boxes2):
     ious = np.maximum(1.0 * inter_area / union_area, 0.0)
 
     return ious
+
 
 
 def nms(bboxes, iou_threshold, sigma=0.3, method='nms'):
@@ -58,8 +60,9 @@ def nms(bboxes, iou_threshold, sigma=0.3, method='nms'):
     return best_bboxes_idx
 
 
+
 def show_and_save_images(img_path, img_name, bboxes, codes, out_dir=None):
-    img = cv2.imread(os.path.join(img_path, img_name))
+    img = cv2.imread(os.path.join(img_path))
     for i, bbox in enumerate(bboxes):
         bbox = np.array(bbox)
         bbox_int = bbox[:4].astype(np.int32)
@@ -76,6 +79,7 @@ def show_and_save_images(img_path, img_name, bboxes, codes, out_dir=None):
     return img
 
 
+
 def prio_check(prio_lst, code_lst):
     idx_lst = []
     for code in code_lst:
@@ -86,6 +90,7 @@ def prio_check(prio_lst, code_lst):
     return final_code
 
 
+
 def filter_code(df, code, thr, replace=None):
     check_code = df[(df['category'] == code) & (df['score'] < thr)]
     if replace is None:
@@ -93,6 +98,7 @@ def filter_code(df, code, thr, replace=None):
     else:
         df.loc[check_code.index, 'category'] = replace
     return df
+
 
 
 def model_test(result,
@@ -117,10 +123,7 @@ def model_test(result,
     for bbox in best_bboxes:
         coord = [round(i, 2) for i in bbox[:4]]
         conf, category = bbox[4], codes[int(bbox[5]) - 1]
-        json_dict.append({'name': img_name, 'category': category, 'bbox': coord, 'score': conf, 'bbox_score': bbox[:5],
-                          'xmin': coord[0], 'ymin': coord[1], 'xmax': coord[2], 'ymax': coord[3],
-                          'ctx': (coord[0]+coord[2])/2, 'cty': (coord[1]+coord[3])/2,
-                          'size': (coord[2]-coord[0])*(coord[3]-coord[1])})
+        json_dict.append({'name': img_name, 'category': category, 'bbox': coord, 'score': conf, 'bbox_score': bbox[:5]})
 
     return json_dict
 
@@ -137,23 +140,30 @@ def default_rule(det_lst, img_path, img_name, config, codes, draw_img=False, **k
     :param draw_img: Boolean,
     :return: main code, bbox, score, image
     """
+    # open config file
+    # with open(json_config_file) as f:
+    #     config = json.load(f)
+    # with open(code_file) as fp:
+    #     codes = fp.read().splitlines()
+
 
     # get size
-    size = kwargs.get('size', 0)
-    sizeX = kwargs.get('sizeX', 0)
-    sizeY = kwargs.get('sizeY', 0)
-    unit_id = kwargs.get('unit_id', None)
+    size = kwargs.get('size', None)
 
-    size = 0 if size is None else size
-    sizeX = 0 if sizeX is None else sizeX
-    sizeY = 0 if sizeY is None else sizeY
-    if unit_id == 'A1AOI800':
-        size = max(size, sizeX, sizeY)
+    # get product_id
+    product_id = kwargs.get('product_id', None)
+
+
+    pd_flag = img_name.split('.')[0].split('_')[3]
+    if pd_flag in ['pd', 'pad', 'cm', 'ms']:
+        pad_flag = 1
+    else:
+        pad_flag = 0
 
     # analyse pkl file to get det result
     json_dict = model_test(det_lst, img_name, codes)
-    det_df = pd.DataFrame(json_dict, columns=['name', 'category', 'bbox', 'score', 'bbox_score',
-                                              'xmin', 'ymin', 'xmax', 'ymax', 'ctx', 'cty', 'size'])
+    det_df = pd.DataFrame(json_dict, columns=['name', 'category', 'bbox', 'score', 'bbox_score'])
+
 
     # prio parameters
     prio_weight = config['prio_weight']
@@ -166,19 +176,69 @@ def default_rule(det_lst, img_path, img_name, config, codes, draw_img=False, **k
     # change other name using threshold
     det_df.loc[det_df['score'] < config['other_thr'], 'category'] = config['other_name']
 
-    # CHECK AZ10/0 FROM PAD
-    if size >= 40:
-        det_df.loc[det_df['category'] == 'PAD', 'category'] = 'AZ10'
-    else:
-        det_df.loc[det_df['category'] == 'PAD', 'category'] = '0'
+    category_list = det_df['category'].values
 
-    # CHECK AZ21/0 FROM PR
-    if size >= 40:
-        det_df.loc[det_df['category'] == 'PR', 'category'] = 'AZ21'
-    else:
-        det_df.loc[det_df['category'] == 'PR', 'category'] = '0'
 
-    # PRIO CHECK
+    # judge size
+    if size:
+        if 'STR05' in category_list or 'STR02' in category_list:
+            if size >= 40:
+                 det_df.loc[det_df['category'] == 'STR05', 'category'] = 'STR05X'
+                 det_df.loc[det_df['category'] == 'STR02', 'category'] = 'STR02X'
+            else:
+                det_df.loc[det_df['category'] == 'STR05', 'category'] = 'STR05O'
+                det_df.loc[det_df['category'] == 'STR02', 'category'] = 'STR02O'
+
+    filter_code(det_df, 'AZ09_H', 0.3, 'AZ09_O')
+    filter_code(det_df, 'AZ09_L', 0.3, 'AZ09_O')
+
+
+    # jauge AZ09 and AZ08
+    flag_AZ08 = 0
+    flag_AZ09_DET = 0
+    flag_AZ09_PHT = 0
+    flag_STR03 = 0
+    for item in det_df['category'].values:
+        if 'AZ09_H' == item:
+            flag_AZ09_DET += 1
+        if 'AZ09_L' == item:
+            flag_AZ09_PHT += 1
+        if 'AZ08_N' == item:
+            flag_AZ08 += 1
+        if 'STR03' == item:
+            flag_STR03 += 1
+
+
+    if flag_AZ09_DET >= 2:
+        det_df.loc[det_df['category'] == 'AZ09_H', 'category'] = 'ILS03_DET'
+    else:
+        det_df.loc[det_df['category'] == 'AZ09_H', 'category'] = 'ILS02_DET'
+    if flag_AZ09_PHT >= 2:
+        det_df.loc[det_df['category'] == 'AZ09_L', 'category'] = 'ILS03_PHT'
+    else:
+        det_df.loc[det_df['category'] == 'AZ09_L', 'category'] = 'ILS02_PHT'
+
+    if flag_AZ08 >= 2:
+        det_df.loc[det_df['category'] == 'AZ08_N', 'category'] = 'AZ08_T'
+    else:
+        det_df.loc[det_df['category'] == 'AZ08_N', 'category'] = 'AZ08_O'
+
+    if flag_STR03 >= 5:
+        det_df.loc[det_df['category'] == 'STR03', 'category'] = 'AZ15'
+
+
+
+    if product_id:
+        if 'STR10_PHT' in category_list or 'STR10_DET' in category_list:
+            if 'L1' == product_id[:2]:
+                det_df.loc[det_df['category'] == 'STR10_PHT', 'category'] = 'STR10'
+            elif 'L3' == product_id[:2]:
+                det_df.loc[det_df['category'] == 'STR10_DET', 'category'] = 'STR10'
+
+
+
+
+    # prio_check
     if len(det_df) != 0:
         Max_conf = det_df['score'].values.max()
         prio_thr = Max_conf * prio_weight
@@ -188,14 +248,16 @@ def default_rule(det_lst, img_path, img_name, config, codes, draw_img=False, **k
         best_score = filtered_final.loc[filtered_final['category'] == final_code, 'score'].max()
         best_idx = filtered_final.loc[filtered_final['category'] == final_code, 'score'].argmax()
         best_bbox = filtered_final.loc[best_idx, 'bbox']
+    # elif pad_flag:
+    #    final_code = 'PAD'
+    #    best_bbox = []
+    #    best_score = 1
     else:
         final_code = config['false_name']
         best_bbox = []
         best_score = 1
 
-    # CHANGE 0 TO AZ21 IF SIZE>40
-    if (size >= 40) and (final_code == '0'):
-        final_code = 'AZ21'
+
 
     # draw images
     if draw_img:
@@ -206,7 +268,36 @@ def default_rule(det_lst, img_path, img_name, config, codes, draw_img=False, **k
     else:
         img = None
 
+
+
+
+
+
+    # if final_code in ['AZ06_PAD', 'AZ10', 'AZ12', 'AZ15', 'AZ99', 'Defocus', 'PAD', 'STR01', 'STR03', 'CVD05','AZ11','ESD']:
+    #     final_code = '0'
+    # elif final_code in ['AZ08_X', 'AZ08_T', 'AZ08_N', 'AZ08_O']:
+    #     final_code = 'AZ08'
+    # elif final_code in ['AZ09_T', 'AZ09_H', 'AZ09_L', 'AZ09_O', 'ILS03_DET', 'ILS03_PHT']:
+    #     final_code = 'AZ09'
+    # elif final_code in ['STR10_DET', 'STR10_PHT']:
+    #     final_code = 'STR10'
+
+    #flag = juage_code(final_code, best_score)
+
+
+
     return final_code, best_bbox, best_score, img
+
+
+def juage_code(final_code, best_score):
+    df_code = pd.read_csv(r'D:\final_1A\1A902\prepare\filter_code.csv')
+    score = df_code.loc[df_code['code'] == final_code, 'score'].max()
+    print(final_code)
+    if best_score > score:
+        return 1
+    else:
+        return 0
+
 
 
 if __name__ == '__main__':

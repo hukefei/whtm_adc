@@ -2,9 +2,9 @@ import os
 import re
 import shutil
 
-file_path = r'E:\1GE02\final_dataset\annotations'
+file_path = r'C:\Users\root\Desktop\val1_0429_XML'
 
-code_file = r'D:\Project\WHTM\document\21101\classes.txt'
+code_file = r'F:\WHTM\24000\24000\data\train_val\classes.txt'
 with open(code_file) as f:
     site_code = f.read().splitlines()
 

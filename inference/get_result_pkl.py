@@ -4,7 +4,9 @@
 import glob
 from mmdet.apis import inference_detector, init_detector
 import pickle
-from progressbar import ProgressBar
+import tqdm
+import os
+import cv2
 
 
 def model_test(imgs,
@@ -19,12 +21,14 @@ def model_test(imgs,
     if len(imgs) == 1:
         final_result = inference_detector(model, imgs[0])
     else:
-        pbar = ProgressBar().start()
-        for i, img in enumerate(imgs):
-            pbar.update(int(i / (len(imgs) - 1) * 100))
-            result = inference_detector(model, img)
+        progressbar = tqdm.tqdm(imgs)
+        for _, img in enumerate(progressbar):
+            image = cv2.imread(img)
+            if image is None:
+                print('image {} is empty'.format(img))
+                final_result.append([])
+            result = inference_detector(model, image)
             final_result.append(result)
-        pbar.finish()
 
     if save_file is not None:
         with open(save_file, 'wb') as fp:
@@ -35,8 +39,8 @@ def model_test(imgs,
 
 
 if __name__ == '__main__':
-    imgs = glob.glob('/data/sdv1/whtm/data/1GE02_test/*.jpg')
-    cfg_file = '/data/sdv1/whtm/config/1GE02/1GE02_v4.py'
-    ckpt_file = '/data/sdv1/whtm/work_dirs/1GE02_v4/epoch_6.pth'
-    save_file = r'/data/sdv1/whtm/result/1GE02/1GE02_1121_test/1GE02_test.pkl'
+    imgs = glob.glob('/data/sdv1/whtm/ddj/data/0326test/diandengji_0319_add/*.jpg')
+    cfg_file = '/data/sdv1/whtm/ddj/config/ovli_0331.py'
+    ckpt_file = '/data/sdv1/whtm/ddj/work_dir/ovli_0331_2/epoch_6.pth'
+    save_file = r'/data/sdv1/whtm/ddj/result/ovli_0331.pkl'
     results = model_test(imgs, cfg_file, ckpt_file, save_file)

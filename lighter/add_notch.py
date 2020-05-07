@@ -47,26 +47,35 @@ def add_notch(img_dir, img_name, xml_dir, xml_save_dir):
     xml_name = img_name[:-3] + 'xml'
     xml_file = os.path.join(xml_dir, xml_name)
     xml_writer = PascalVocWriter('', img_name, [h, w, d])
-    tree = ET.parse(xml_file)
-    root = tree.getroot()
-    objs = root.findall('object')
-    for obj in objs:
-        name = obj[0].text
-        xmin = obj[4][0].text
-        ymin = obj[4][1].text
-        xmax = obj[4][2].text
-        ymax = obj[4][3].text
-        xml_writer.addBndBox(xmin, ymin, xmax, ymax, name)
+    try:
+        tree = ET.parse(xml_file)
+        root = tree.getroot()
+        objs = root.findall('object')
+        for obj in objs:
+            name = obj[0].text
+            xmin = obj[4][0].text
+            ymin = obj[4][1].text
+            xmax = obj[4][2].text
+            ymax = obj[4][3].text
+            xml_writer.addBndBox(xmin, ymin, xmax, ymax, name)
+            if name == 'notch':
+                print('{} already has notch label'.format(img_name))
+                return 0
+    except Exception as e:
+        pass
     xml_writer.addBndBox(notch_x_min, notch_y_min, notch_x_max, notch_y_max, 'notch')
     xml_writer.save(os.path.join(xml_save_dir, xml_name))
 
 
 if __name__ == '__main__':
-    img_dir = r'E:\diandengji\union\images'
+    img_dir = r'E:\diandengji\final dataset\images'
     #img_name = r'W93VP2827B0512_WHITE_20190730.jpg'
-    xml_dir = r'E:\diandengji\union\annotations'
-    xml_save = r'E:\diandengji\test\save'
+    xml_dir = r'E:\diandengji\final dataset\annotations'
+    xml_save = r'E:\diandengji\final dataset\add_notch_save'
+
     for img in os.listdir(img_dir):
+        if 'WHITE' not in img:
+            continue
         try:
             add_notch(img_dir, img, xml_dir, xml_save)
         except Exception as e:
