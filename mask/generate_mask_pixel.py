@@ -3,13 +3,17 @@ import os
 import shutil
 import matplotlib.pyplot as plt
 import numpy as np
+import itertools
+import time
 
 
-def generate_pixels(img, pixel_cor, save_dir=None):
-    image_name = img.replace('\\', '/').split('/')[-1]
-    img = cv2.imread(img, 0)
-    img_c = cv2.imread(img, 1)
+def generate_pixels(img_f, pixel_cor, save_dir=None):
+    image_name = img_f.replace('\\', '/').split('/')[-1]
+    img = cv2.imread(img_f, 0)
+    img_c = cv2.imread(img_f, 1)
     h, w = img.shape
+
+    st = time.time()
 
     obj = img[pixel_cor[0]:pixel_cor[2], pixel_cor[1]:pixel_cor[3]]
     obj_h, obj_w = obj.shape
@@ -27,7 +31,7 @@ def generate_pixels(img, pixel_cor, save_dir=None):
     centroids = centroids.astype(int)
     centroids = centroids[1:]
 
-    error = 5
+    error = np.mean([obj_h, obj_w]) * 0.1
     num = len(centroids)
     r_ = []
     for i in range(num):
@@ -56,16 +60,17 @@ def generate_pixels(img, pixel_cor, save_dir=None):
             bboxes.append(bbox)
 
     bboxes = np.array(bboxes)
-    print(len(bboxes), bboxes)
+    # print(len(bboxes), bboxes)
 
     cent_img = np.zeros_like(img_c)
     for b in bboxes:
         cv2.rectangle(cent_img, (b[0], b[1]), (b[2], b[3]), (0, 0, 255), -1)
 
-    added_img = cv2.addWeighted(img_c, 1, cent_img, 0.5, 0)
-    # added_img = cv2.cvtColor(added_img, cv2.COLOR_BGR2RGB)
+    ed = time.time()
+    print('spend time: {:.2f}s'.format(ed - st))
 
     if save_dir is not None:
+        added_img = cv2.addWeighted(img_c, 1, cent_img, 0.5, 0)
         save_path = os.path.join(save_dir, image_name)
         cv2.imwrite(save_path, added_img)
 
@@ -73,8 +78,8 @@ def generate_pixels(img, pixel_cor, save_dir=None):
 
 
 def make_grid(centroid, x_interval, y_interval, h, w):
-    num_rows = int(h / y_interval) + 2
-    num_cols = int(w / x_interval) + 2
+    num_rows = int(h / y_interval)+1
+    num_cols = int(w / x_interval)+1
     error = np.mean([x_interval, y_interval]) * 0.1
     centroids_ = centroid.copy()
     all_centroids = []
@@ -82,90 +87,31 @@ def make_grid(centroid, x_interval, y_interval, h, w):
     while True:
         if len(centroids_) == 0:
             break
-        c = centroids_[0]
-        all_centroids.append(c)
+        anchor = centroids_[0]
         centroids_ = np.delete(centroids_, 0, 0)
+        all_centroids.append(anchor)
         # select a center to generate the grid
-        deletes = []
-        adds = []
-        for i in range(num_rows):
-            new_x = c[0] - i * x_interval
-            for j in range(num_cols):
-                new_y = c[1] - j * y_interval
-                if i == 0 and j == 0:
-                    continue
-                # print(new_x, new_y)
-                # print(len(centroids_))
-                new_flag = True
-                for idx, t in enumerate(centroids_):
-                    if (t[0] <= new_x + error) and (t[0] >= new_x - error) and (t[1] <= new_y + error) and (
-                            t[1] >= new_y - error):
-                        adds.append(idx)
-                        deletes.append(idx)
-                        new_flag = False
-                if new_flag:
-                    all_centroids.append(np.array([new_x, new_y]))
+        for i, j in itertools.product(range(-num_rows, num_rows + 1), range(-num_cols, num_cols + 1)):
+            new_x = anchor[0] + i * x_interval
+            new_y = anchor[1] + j * y_interval
+            if i == 0 and j == 0:
+                continue
+            new_flag = True
+            for idx, t in enumerate(centroids_):
+                if (t[0] <= new_x + error) and (t[0] >= new_x - error) and (t[1] <= new_y + error) and (
+                        t[1] >= new_y - error):
+                    all_centroids.append(centroids_[idx])
+                    centroids_ = np.delete(centroids_, idx, 0)
+                    new_flag = False
+            if new_flag:
+                all_centroids.append(np.array([new_x, new_y]))
 
-        for i in range(num_rows):
-            new_x = c[0] + i * x_interval
-            for j in range(num_cols):
-                new_y = c[1] - j * y_interval
-                if i == 0 and j == 0:
-                    continue
-                # print(new_x, new_y)
-                # print(len(centroids_))
-                new_flag = True
-                for idx, t in enumerate(centroids_):
-                    if (t[0] <= new_x + error) and (t[0] >= new_x - error) and (t[1] <= new_y + error) and (
-                            t[1] >= new_y - error):
-                        adds.append(idx)
-                        deletes.append(idx)
-                        new_flag = False
-                if new_flag:
-                    all_centroids.append(np.array([new_x, new_y]))
-
-        for i in range(num_rows):
-            new_x = c[0] - i * x_interval
-            for j in range(num_cols):
-                new_y = c[1] + j * y_interval
-                if i == 0 and j == 0:
-                    continue
-                # print(new_x, new_y)
-                # print(len(centroids_))
-                new_flag = True
-                for idx, t in enumerate(centroids_):
-                    if (t[0] <= new_x + error) and (t[0] >= new_x - error) and (t[1] <= new_y + error) and (
-                            t[1] >= new_y - error):
-                        adds.append(idx)
-                        deletes.append(idx)
-                        new_flag = False
-
-                if new_flag:
-                    all_centroids.append(np.array([new_x, new_y]))
-
-        for i in range(num_rows):
-            new_x = c[0] + i * x_interval
-            for j in range(num_cols):
-                new_y = c[1] + j * y_interval
-                if i == 0 and j == 0:
-                    continue
-                # print(new_x, new_y)
-                # print(len(centroids_))
-                new_flag = True
-                for idx, t in enumerate(centroids_):
-                    if (t[0] <= new_x + error) and (t[0] >= new_x - error) and (t[1] <= new_y + error) and (
-                            t[1] >= new_y - error):
-                        adds.append(idx)
-                        deletes.append(idx)
-                        new_flag = False
-
-                if new_flag:
-                    all_centroids.append(np.array([new_x, new_y]))
-
-        adds = list(set(adds))
-        for idx in adds:
-            all_centroids.append(centroids_[idx])
-        centroids_ = np.delete(centroids_, deletes, 0)
     all_centroids = np.array(all_centroids)
-    print(all_centroids)
+    # print(all_centroids)
     return all_centroids
+
+if __name__ == '__main__':
+    img_f = r'E:\szl\MASK\U4639FH1FBEBW201_-103995-3_-602-1291_before.jpg'
+    save_dir = r'E:\szl\MASK\save'
+    pixel_cor = [200, 442, 384, 616]
+    generate_pixels(img_f, pixel_cor, save_dir)

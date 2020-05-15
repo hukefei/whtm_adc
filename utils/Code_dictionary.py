@@ -3,7 +3,7 @@ import pandas as pd
 
 class CodeDictionary():
     def __init__(self, code_file):
-        self.code_df = pd.read_table(code_file, header=-1, names=['CODE'])
+        self.code_df = pd.read_table(code_file, header=None, names=['CODE'])
         self.code_df['ID'] = self.code_df.index + 1
         print(self.code_df)
         self.code_dict, self.code_list = self.get_dict(self.code_df)
