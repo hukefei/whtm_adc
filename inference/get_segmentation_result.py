@@ -7,6 +7,8 @@ import pickle
 import tqdm
 import os
 import cv2
+import pycocotools
+from utils.cocoapi import *
 
 
 def model_test(imgs,
@@ -19,7 +21,8 @@ def model_test(imgs,
     final_result = []
 
     if len(imgs) == 1:
-        final_result = inference_detector(model, imgs[0])
+        result = inference_detector(model, imgs[0])
+        final_result.append(result)
     else:
         progressbar = tqdm.tqdm(imgs)
         for _, img in enumerate(progressbar):
@@ -36,6 +39,12 @@ def model_test(imgs,
 
     return final_result
 
+def convert_result(result):
+    for r in result:
+        bbox = r[0]
+        seg = r[1]
+        for s in seg:
+            size = s['size']
 
 
 if __name__ == '__main__':
@@ -44,3 +53,5 @@ if __name__ == '__main__':
     ckpt_file = '/data/sdv1/whtm/mask/workdir/0512-1/epoch_12.pth'
     save_file = r'/data/sdv1/whtm/mask/result/0512/particle.pkl'
     results = model_test(imgs, cfg_file, ckpt_file, save_file)
+
+
