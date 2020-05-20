@@ -78,8 +78,8 @@ def generate_pixels(img_f, pixel_cor, save_dir=None):
 
 
 def make_grid(centroid, x_interval, y_interval, h, w):
-    num_rows = int(h / y_interval)+1
-    num_cols = int(w / x_interval)+1
+    num_rows = int(h / y_interval)
+    num_cols = int(w / x_interval)
     error = np.mean([x_interval, y_interval]) * 0.1
     centroids_ = centroid.copy()
     all_centroids = []
@@ -88,10 +88,13 @@ def make_grid(centroid, x_interval, y_interval, h, w):
         if len(centroids_) == 0:
             break
         anchor = centroids_[0]
+        bias_x = int((anchor[0] - h / 2) / x_interval)
+        bias_y = int((anchor[1] - w / 2) / y_interval)
         centroids_ = np.delete(centroids_, 0, 0)
         all_centroids.append(anchor)
         # select a center to generate the grid
-        for i, j in itertools.product(range(-num_rows, num_rows + 1), range(-num_cols, num_cols + 1)):
+        for i, j in itertools.product(range(-num_rows - bias_x, num_rows + 1 - bias_x),
+                                      range(-num_cols - bias_y, num_cols + 1 - bias_y)):
             new_x = anchor[0] + i * x_interval
             new_y = anchor[1] + j * y_interval
             if i == 0 and j == 0:
@@ -110,8 +113,9 @@ def make_grid(centroid, x_interval, y_interval, h, w):
     # print(all_centroids)
     return all_centroids
 
+
 if __name__ == '__main__':
-    img_f = r'E:\szl\MASK\U4639FH1FBEBW201_-103995-3_-602-1291_before.jpg'
-    save_dir = r'E:\szl\MASK\save'
-    pixel_cor = [200, 442, 384, 616]
+    img_f = r'C:\Users\root\Pictures\MASK\U4639FH1FBEBW201_-103437-3_-601-7941_before.jpg'
+    save_dir = r'C:\Users\root\Pictures\MASK\save'
+    pixel_cor = [184, 406, 370, 586]
     generate_pixels(img_f, pixel_cor, save_dir)

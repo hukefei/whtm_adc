@@ -8,20 +8,20 @@ import pickle
 
 class Config(object):
     # img_path = r'/data/sdv1/whtm/24000/data/test/24000_val_3/'
-    img_path = r'/data/sdv1/whtm/24000/data/0509/24000_655_0508'
+    img_path = r'/data/sdv1/whtm/24000/val/24000_val_0512/'
 
     # cfg_file = '/data/sdv1/whtm/24000/config/0427.py'
     # ckpt_file = '/data/sdv1/whtm/24000/workdir/24000_0427/epoch_6.pth'
     # json_file = r'/data/sdv1/whtm/24000/model/0426/rule.json'
     # code_file = r'/data/sdv1/whtm/24000/model/0426/classes.txt'
 
-    cfg_file = r'/data/sdv1/whtm/24000/model/0427/0427.py'
-    ckpt_file = r'/data/sdv1/whtm/24000/model/0427/model-2026ed0b.pth'
-    json_file = r'/data/sdv1/whtm/24000/model/0427/rule.json'
-    code_file = r'/data/sdv1/whtm/24000/model/0427/classes.txt'
+    cfg_file = r'/data/sdv1/whtm/24000/model/0511/0511.py'
+    ckpt_file = r'/data/sdv1/whtm/24000/model/0511/model_0511.pth'
+    json_file = r'/data/sdv1/whtm/24000/model/0511/rule.json'
+    code_file = r'/data/sdv1/whtm/24000/model/0511/classes.txt'
 
-    output = r'/data/sdv1/whtm/24000/result/0509_2/'
-    save_file = r'24000_0509_2.pkl'
+    output = r'/data/sdv1/whtm/24000/result/0519_val/'
+    save_file = r'24000_0519_val.pkl'
     img_save_path = r'images'
     save_file = os.path.join(output, save_file)
     img_save_path = os.path.join(output, img_save_path)
