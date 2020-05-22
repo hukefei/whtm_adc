@@ -23,9 +23,9 @@ def predict(img, *args, **kwargs):
     image_color = cv2.imread(img, 1)
 
     mmdet_result = inference_detector(model, image_color)
-    code, bbox, score, _ = judge_code(mmdet_result, image_color, image_name, classes)
+    code, bbox, score, image = judge_code(mmdet_result, image_color, image_name, classes)
 
-    return code, bbox, score, None
+    return code, bbox, score, image
 
 
 def init_model(config, checkpoint, *args, **kwargs):
@@ -95,11 +95,31 @@ def judge_code(mmdet_result, image_color, image_name, classes):
     det_df = filter_code(det_df, 'LS2', 1, 'LA02')
     det_df = filter_code(det_df, 'LS1', 1, 'LA03')
 
+    # judge short(E01/E02)
+
+
     # judge E series
     det_df = count_code(det_df, 'DK', 2, 'E01', 'E02')
     det_df = count_code(det_df, 'ELK', 2, 'E01', 'E02')
     det_df = filter_code(det_df, 'SLK', 1, 'E01')
 
+    # judge particle
+    det_df = judge_particle(det_df, result, image_color, image_gray)
+
+
+
+
+    # filter pixels
+    det_df = filter_code(det_df, 'pixel', 1)
+    # final judge
+    code, bbox, score = final_judge(det_df, PRIO_ORDER, prio_weight=0.8)
+    draw_code(image_color, code, score, (0, h))
+    # cv2.imwrite(os.path.join('/data/sdv1/whtm/mask/test/result/', image_name), image_draw)
+
+    return code, bbox, score, image_color
+
+
+def judge_particle(det_df, result, image_color, image_gray):
     # judge particle
     det_df = filter_code(det_df, 'BP', 1, 'PN02')
 
@@ -110,7 +130,7 @@ def judge_code(mmdet_result, image_color, image_name, classes):
         pixels = pixels[np.where(pixels[:, -1] >= 0.3)]
         if len(pixels) == 0:
             print('particle in the figure but no enough pixels detected!')
-            return 'unknown', 0, [], None
+            return 'unknown', 0, [], image_color
         # sorting
         pixels = pixels[pixels[:, -1].argsort()]
         # template pixel
@@ -121,15 +141,19 @@ def judge_code(mmdet_result, image_color, image_name, classes):
         closing = cv2.morphologyEx(otsu, cv2.MORPH_OPEN, kernel=np.ones((20, 20), np.uint8))
         contours, hierarchy = cv2.findContours(closing, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         bbox_size = template_pixel.size
-        cnt = contours[np.argmax([cv2.contourArea(cnt) for cnt in contours])]
-        pixel_size = cv2.contourArea(cnt)
-        img_mask = np.zeros((closing.shape))
-        img_mask = cv2.drawContours(img_mask, [cnt], 0, 255, -1)
+        try:
+            cnt = contours[np.argmax([cv2.contourArea(cnt) for cnt in contours])]
+            pixel_size = cv2.contourArea(cnt)
+            img_mask = np.zeros(closing.shape)
+            img_mask = cv2.drawContours(img_mask, [cnt], 0, 255, -1)
+        except Exception as e:
+            print('no contours detected in the template pixel!')
+            return 'unknown', 0, [], image_color
 
-        bboxes, image_draw = generate_pixels(image_color, image_name, template_pixel_cor, pixels)
+        bboxes, image_color = generate_pixels(image_color, template_pixel_cor, pixels)
         if bboxes is None:
             print('generate pixels failed!')
-            return 'unknown', 0, [], None
+            return 'unknown', 0, [], image_color
 
         bbox_particle_size = [-1] * len(bboxes)
 
@@ -159,7 +183,7 @@ def judge_code(mmdet_result, image_color, image_name, classes):
                         det_df.loc[idx, 'remark'].append(particle_size)
             if bbox_particle_size[i] == -1:
                 bbox_particle_size[i] = 0
-        draw_size(image_draw, bboxes, bbox_particle_size)
+        draw_size(image_color, bboxes, bbox_particle_size)
 
         total_particle_size = sum(bbox_particle_size)
         if total_particle_size >= 2:
@@ -172,8 +196,10 @@ def judge_code(mmdet_result, image_color, image_name, classes):
         for idx, row in det_df[det_df['category'] == 'PP'].iterrows():
             if row['remark'] == []:
                 max_size = 0
+                total_size = 0
             else:
                 max_size = max(row['remark'])
+                total_size = sum(row['remark'])
             if max_size >= 0.5:
                 det_df.loc[idx, 'category'] = 'K02'
             else:
@@ -188,18 +214,11 @@ def judge_code(mmdet_result, image_color, image_name, classes):
         elif kp_total_size >= 1 and kp_total_size < 2:
             filter_code(det_df, 'KP', 1, 'K02')
 
+    return det_df, image_color
 
-    else:
-        image_draw = image_color
-    # filter pixels
-    det_df = filter_code(det_df, 'pixel', 1)
-    # final judge
-    code, bbox, score = final_judge(det_df, PRIO_ORDER, prio_weight=0.8)
-    draw_code(image_draw, code, score, (0, h))
-    cv2.imwrite(os.path.join('/data/sdv1/whtm/mask/test/result/', image_name), image_draw)
 
-    return code, bbox, score, _
-
+def judge_short_count(det_df, result, image_color, image_gray):
+    pass
 
 def draw_code(img, code, score, position, size=2):
     cv2.putText(img, f'{code}: {str(np.round(score, 2))}', position,
@@ -231,7 +250,7 @@ def draw_size(img, bboxes, sizes, font_size=1):
                     cv2.FONT_HERSHEY_SIMPLEX, font_size, (255, 0, 0), 2)
 
 
-def generate_pixels(img_c, image_name, anchor, pixels, save_dir=None):
+def generate_pixels(img_c, anchor, pixels):
     # image_name = img_f.replace('\\', '/').split('/')[-1]
     # img = cv2.imread(img_f, 0)
     # img_c = cv2.imread(img_f, 1)
@@ -274,7 +293,7 @@ def generate_pixels(img_c, image_name, anchor, pixels, save_dir=None):
         y_interval = np.min(r_[np.where(r_[:, 0] < error)][:, 1])
     except Exception as e:
         # print(e)
-        return None, None
+        return None, img_c
     error = np.mean([x_interval, y_interval]) * 0.5
     all_c = make_grid(anchor, x_interval, y_interval, h, w)
 
@@ -282,7 +301,7 @@ def generate_pixels(img_c, image_name, anchor, pixels, save_dir=None):
         left_pixels = []
         all_c_check = np.round((np.array(all_c) / error).astype(float))
         for p in pixels[1:]:
-            p = p[:-1].astype(int)[:2]
+            p = p[:2].astype(int)
             p_check = np.round(p / error)
             if p_check not in all_c_check:
                 left_pixels.append(p)
@@ -300,7 +319,7 @@ def generate_pixels(img_c, image_name, anchor, pixels, save_dir=None):
         img_bbox = [0, 0, w, h]
         overlap = [max(bbox[0], img_bbox[0]), max(bbox[1], img_bbox[1]), min(bbox[2], img_bbox[2]),
                    min(bbox[3], img_bbox[3])]
-        overlap_size = (overlap[2] - overlap[0]) * (overlap[3] - overlap[1])
+        overlap_size = max((overlap[2] - overlap[0]), 0) * max((overlap[3] - overlap[1]), 0)
         if overlap_size > 0:
             # print(overlap_size, bbox, overlap)
             bboxes.append(bbox)

@@ -2,7 +2,7 @@ import os
 import re
 import shutil
 
-file_path = r'C:\Users\root\Desktop\val1_0429_XML'
+file_path = r'F:\WHTM\MASK\data\AMI200\annotations'
 
 code_file = r'F:\WHTM\24000\24000\data\train_val\classes.txt'
 with open(code_file) as f:

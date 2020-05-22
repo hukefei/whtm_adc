@@ -6,7 +6,7 @@ def train_test_split(img_dir, xml_dir, train_size, output):
     imgs = os.listdir(img_dir)
     train_set = random.sample(imgs, int(len(imgs)*train_size))
     train_dir = os.path.join(output, 'train')
-    test_dir = os.path.join(output, 'test')
+    test_dir = os.path.join(output, 'val')
     if not os.path.exists(train_dir):
         os.makedirs(train_dir)
     if not os.path.exists(test_dir):
@@ -21,8 +21,8 @@ def train_test_split(img_dir, xml_dir, train_size, output):
             shutil.copy(os.path.join(xml_dir, xml), os.path.join(test_dir, xml))
 
 if __name__ == '__main__':
-    img_dir = r'E:\1GE02\final_dataset\images'
-    anns_dir = r'E:\1GE02\final_dataset\annotations'
-    TRAIN_SIZE = 0.9
-    output = r'E:\1GE02\1GE02_train_test_data'
+    img_dir = r'F:\WHTM\MASK\data\train_val\all'
+    anns_dir = r'F:\WHTM\MASK\data\train_val\all'
+    TRAIN_SIZE = 0.8
+    output = r'F:\WHTM\MASK\data\train_val'
     train_test_split(img_dir, anns_dir, TRAIN_SIZE, output)
