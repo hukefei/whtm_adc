@@ -2,11 +2,18 @@ import pandas as pd
 
 
 class CodeDictionary():
-    def __init__(self, code_file):
-        self.code_df = pd.read_table(code_file, header=None, names=['CODE'])
-        self.code_df['ID'] = self.code_df.index + 1
+    def __init__(self, code_file, code_id=None):
+        self.code_df = pd.read_table(code_file, header=None, names=['CODE'], encoding='utf-8')
+        if code_id is not None:
+            self.id_df = pd.read_table(code_id, header=None, names=['ID'], encoding='utf-8')
+        else:
+            self.id_df = None
+        if self.id_df is None:
+            self.code_df['ID'] = self.code_df.index + 1
+        else:
+            self.code_df['ID'] = self.id_df['ID']
         print(self.code_df)
-        self.code_dict, self.code_list = self.get_dict(self.code_df)
+        self.code_dict, self.code_list, self.code_id_lst = self.get_dict(self.code_df)
 
     def code2id(self, code_lst):
         if isinstance(code_lst, str):
@@ -26,14 +33,20 @@ class CodeDictionary():
                 code_lst.append(self.code_df.loc[self.code_df['ID'] == id, 'CODE'].values[0])
             return code_lst
 
+    def idx2code(self, idx):
+        if isinstance(idx, int):
+            return self.code_df.loc[idx, 'CODE']
+
     @staticmethod
     def get_dict(code_df):
         d_ = {}
         code_lst = []
+        code_id_lst = []
         for i in range(len(code_df)):
             d_.setdefault(code_df.loc[i, 'CODE'], code_df.loc[i, 'ID'])
             code_lst.append(code_df.loc[i, 'CODE'])
-        return d_, code_lst
+            code_id_lst.append(str(code_df.loc[i, 'ID']))
+        return d_, code_lst, code_id_lst
 
 
 if __name__ == '__main__':

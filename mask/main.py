@@ -72,7 +72,7 @@ def model_test(result,
         json_dict.append({'name': img_name, 'category': category, 'bbox': coord, 'score': conf, 'bbox_score': bbox[:5],
                           'xmin': coord[0], 'ymin': coord[1], 'xmax': coord[2], 'ymax': coord[3],
                           'ctx': (coord[0] + coord[2]) / 2, 'cty': (coord[1] + coord[3]) / 2,
-                          'size': (coord[2] - coord[0]) * (coord[3] - coord[1]), 'remark': []})
+                          'size': (coord[2] - coord[0]) * (coord[3] - coord[1]), 'remark': {}})
 
     return json_dict
 
@@ -165,7 +165,7 @@ def judge_particle(det_df, result, image_color, image_gray):
                     if pixel.size < template_pixel.size:
                         # print('margin pixel!')
                         bbox_particle_size[i] = 0
-                        det_df.loc[idx, 'remark'].append(0)
+                        det_df.loc[idx, 'remark'].setdefault('coverd', []).append(0)
                     else:
                         # calculate pixel coverd size
                         td, otsud = cv2.threshold(pixel, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
@@ -180,7 +180,7 @@ def judge_particle(det_df, result, image_color, image_gray):
                         else:
                             particle_size = 1
                         bbox_particle_size[i] = particle_size
-                        det_df.loc[idx, 'remark'].append(particle_size)
+                        det_df.loc[idx, 'remark'].setdefault('coverd', []).append(particle_size)
             if bbox_particle_size[i] == -1:
                 bbox_particle_size[i] = 0
         draw_size(image_color, bboxes, bbox_particle_size)
@@ -194,12 +194,13 @@ def judge_particle(det_df, result, image_color, image_gray):
             det_df = filter_code(det_df, 'PP', 1, 'PO01')
 
         for idx, row in det_df[det_df['category'] == 'PP'].iterrows():
-            if row['remark'] == []:
+            coverd = row['remark']['coverd']
+            if coverd == []:
                 max_size = 0
                 total_size = 0
             else:
-                max_size = max(row['remark'])
-                total_size = sum(row['remark'])
+                max_size = max(coverd)
+                total_size = sum(coverd)
             if max_size >= 0.5:
                 det_df.loc[idx, 'category'] = 'K02'
             else:
