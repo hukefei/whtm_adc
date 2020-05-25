@@ -4,11 +4,13 @@ import shutil
 import os
 import pandas as pd
 
-path = r'/data/sdv1/whtm/mask/model/FMM_color_0519/'
+path = r'/data/sdv1/whtm/mask/model/FMM_0525/'
 opt = process(path)
-img_path = r'/data/sdv1/whtm/mask/test/Review_AMI100/'
-progressbar = tqdm.tqdm(glob.glob(os.path.join(img_path, 'E03/*/*.jpg')))
-save_dir = r'/data/sdv1/whtm/mask/test/result_AMI100_0521'
+img_path = r'/data/sdv1/whtm/mask/test/Review_AMI200/'
+imgs = glob.glob(os.path.join(img_path, '*/*/*.jpg'))
+# imgs = [os.path.join(img_path, 'T6647FH1FAERT501_814-6_-687-6796_before.jpg')]
+progressbar = tqdm.tqdm(imgs)
+save_dir = r'/data/sdv1/whtm/mask/test/0525_AMI200/result'
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 
