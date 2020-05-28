@@ -8,27 +8,29 @@ import pickle
 
 class Config(object):
     # img_path = r'/data/sdv1/whtm/24000/data/test/24000_val_3/'
-    img_path = r'/data/sdv1/whtm/24000/val/24000_val_0512/'
+    img_path = r'/data/sdv2/wjq/21101/data/0511_rep01/REP01'
 
     # cfg_file = '/data/sdv1/whtm/24000/config/0427.py'
     # ckpt_file = '/data/sdv1/whtm/24000/workdir/24000_0427/epoch_6.pth'
     # json_file = r'/data/sdv1/whtm/24000/model/0426/rule.json'
     # code_file = r'/data/sdv1/whtm/24000/model/0426/classes.txt'
 
-    cfg_file = r'/data/sdv1/whtm/24000/model/0511/0511.py'
-    ckpt_file = r'/data/sdv1/whtm/24000/model/0511/model_0511.pth'
-    json_file = r'/data/sdv1/whtm/24000/model/0511/rule.json'
-    code_file = r'/data/sdv1/whtm/24000/model/0511/classes.txt'
+    cfg_file = r'/data/sdv2/wjq/21101/config/test_faster.py'
+    ckpt_file = r'/data/sdv2/wjq/21101/work_dir/test_rep01/epoch_20.pth'
+    json_file = r'/data/sdv2/wjq/21101_0415/rule.json'
+    code_file = r'/data/sdv2/wjq/21101_0415/test_class.txt'
 
-    output = r'/data/sdv1/whtm/24000/result/0519_val/'
-    save_file = r'24000_0519_val.pkl'
+    output = r'/data/sdv2/wjq/output_0528_train/test'
+    save_file = r'w01le1129b0311_40737_-71438_before.pkl'
     img_save_path = r'images'
     save_file = os.path.join(output, save_file)
     img_save_path = os.path.join(output, img_save_path)
 
     size_file = None
+    use_pkl = False
 
-    imgs = glob.glob(os.path.join(img_path, '*/*.jpg'))
+    imgs = glob.glob(os.path.join(img_path, 'w02se0501a0501_294755_643933_before.jpg'))
+    imgs = [os.path.join(img_path, 'w02se0501a0501_294755_643933_before.jpg')]
 
     # open config file
     with open(json_file) as f:
@@ -41,7 +43,7 @@ opt = Config()
 if not os.path.exists(opt.output):
     os.makedirs(opt.output)
 
-if os.path.exists(opt.save_file):
+if os.path.exists(opt.save_file) and opt.use_pkl:
     print('pkl file already exists!')
     with open(opt.save_file, 'rb') as f:
         result = pickle.load(f)

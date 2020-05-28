@@ -11,9 +11,10 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import pickle
 
-PRIO_ORDER = ['E01', 'F01', 'unknown', 'PO01', 'E02', 'LA03', 'LA02', 'K02', 'PO02', 'PO03', 'PN02', 'E03', 'B02',
+PRIO_ORDER = ['E01', 'F01', 'PO01', 'E02', 'LA03', 'LA02', 'unknown', 'K02', 'PO02', 'PO03', 'PN02', 'E03', 'B02',
               'FALSE']
-save_dir = r'/data/sdv1/whtm/mask/test/0525_particle/result/pkl/'
+PRIO_WEIGHT = 0.5
+# save_dir = r'/data/sdv1/whtm/mask/test/0525_particle/result/pkl/'
 
 
 def predict(img, *args, **kwargs):
@@ -25,22 +26,23 @@ def predict(img, *args, **kwargs):
     # image_gray = cv2.imread(img, 0)
     image_color = cv2.imread(img, 1)
 
-    pkl_file = os.path.join(save_dir, image_name.replace('jpg', 'pkl'))
-    if os.path.exists(pkl_file):
-        with open(pkl_file, 'rb') as f:
-            mmdet_result = pickle.load(f)
-    else:
-        mmdet_result = inference_detector(model, image_color)
-        with open(pkl_file, 'wb') as f:
-            pickle.dump(mmdet_result, f)
-    # mmdet_result = inference_detector(model, image_color)
+    # pkl_file = os.path.join(save_dir, image_name.replace('jpg', 'pkl'))
+    # if os.path.exists(pkl_file):
+    #     with open(pkl_file, 'rb') as f:
+    #         mmdet_result = pickle.load(f)
+    # else:
+    #     mmdet_result = inference_detector(model, image_color)
+    #     with open(pkl_file, 'wb') as f:
+    #         pickle.dump(mmdet_result, f)
+
+    mmdet_result = inference_detector(model, image_color)
     code, bbox, score, image = judge_code(mmdet_result, image_color, image_name, classes)
 
     return code, bbox, score, image
 
 
 def init_model(config, checkpoint, *args, **kwargs):
-    model = init_detector(config, checkpoint)
+    model = init_detector(config, checkpoint, **kwargs)
     return model
 
 
@@ -90,13 +92,13 @@ def model_test(result,
 
 def judge_code(mmdet_result, image_color, image_name, classes):
     image_gray = cv2.cvtColor(image_color, cv2.COLOR_BGR2GRAY)
-    result = np.array(mmdet_result)
     h, w, c = image_color.shape
-    _ = draw_bboxes(image_color, image_name, mmdet_result, classes)
+    _ = draw_bboxes(image_color, mmdet_result[:-1], classes[:-1])
 
     d_ = model_test(mmdet_result, image_name, classes)
     det_df = pd.DataFrame(d_, columns=['name', 'category', 'bbox', 'score', 'bbox_score',
                                        'xmin', 'ymin', 'xmax', 'ymax', 'ctx', 'cty', 'size', 'remark'])
+    det_df = det_df.sort_values(by='score', ascending=False)
 
     # filter confidence
     all = classes.copy()
@@ -110,30 +112,41 @@ def judge_code(mmdet_result, image_color, image_name, classes):
     det_df = filter_code(det_df, 'LS1', 1, 'LA03')
 
     # judge short(E01/E02)
+    count = judge_short_count(det_df, image_color, image_gray)
+    if count <= 0:
+        det_df = filter_code(det_df, 'LK', 1, 'unknown')
+    elif count == 1:
+        det_df = filter_code(det_df, 'LK', 1, 'E02')
+    elif count >= 2:
+        det_df = filter_code(det_df, 'LK', 1, 'E01')
 
     # judge E series
     det_df = count_code(det_df, 'DK', 2, 'E01', 'E02')
-    det_df = count_code(det_df, 'LK', 2, 'E01', 'E02')
+    # det_df = count_code(det_df, 'LK', 2, 'E01', 'E02')
     # det_df = filter_code(det_df, 'SLK', 1, 'E01')
 
     # judge particle
     if ('KP' in det_df['category'].values) or ('PP' in det_df['category'].values) or (
             'BP' in det_df['category'].values):
-        det_df, image_color = judge_particle(det_df, result, image_color, image_gray)
+        det_df, image_color = judge_particle(det_df, image_color, image_gray)
 
     # filter pixels
     det_df = filter_code(det_df, 'pixel', 1)
     # final judge
-    code, bbox, score = final_judge(det_df, PRIO_ORDER, prio_weight=0.8)
+    code, bbox, score = final_judge(det_df, PRIO_ORDER, prio_weight=PRIO_WEIGHT)
     draw_code(image_color, code, score, (0, h))
     # cv2.imwrite(os.path.join('/data/sdv1/whtm/mask/test/result/', image_name), image_draw)
 
     return code, bbox, score, image_color
 
 
-def judge_particle(det_df, result, image_color, image_gray):
+def judge_particle(det_df, image_color, image_gray):
     # judge particle
-    # det_df = filter_code(det_df, 'BP', 1, 'PN02')
+    h, w, c = image_color.shape
+    image_size = h * w
+
+    # filter big particle
+    det_df.loc[(det_df['category'] == 'PP') & (det_df['size'] >= image_size * 0.2), 'category'] = 'PO01'
 
     # calculate area size
     pixels = det_df.loc[det_df['category'] == 'pixel', 'bbox_score'].values
@@ -142,21 +155,24 @@ def judge_particle(det_df, result, image_color, image_gray):
     if len(pixels) == 0:
         print('particle in the figure but no enough pixels detected!')
         det_df = filter_code(det_df, ['KP', 'PP'], 1, 'unknown')
+        det_df = filter_code(det_df, 'BP', 1, 'PN02')
         return det_df, image_color
     # sorting
-    pixels = pixels[pixels[:, -1].argsort()]
+    pixels = pixels[pixels[:, -1].argsort()[::-1]]
     # template pixel size and pixel mask
     template_pixel_cor = pixels[0].astype(int)
     template_pixel = image_gray[template_pixel_cor[1]:template_pixel_cor[3],
                      template_pixel_cor[0]:template_pixel_cor[2]]
-    cv2.imwrite('/data/sdv1/whtm/mask/test/temp/template_pixel.jpg', template_pixel)
+    p_h, p_w = template_pixel.shape
+    template_pixel_size = p_h * p_w
+    # cv2.imwrite('/data/sdv1/whtm/mask/test/temp/template_pixel.jpg', template_pixel)
     thr = template_pixel[int(template_pixel.shape[0] / 2 - 5):int(template_pixel.shape[0] / 2 + 5),
           int(template_pixel.shape[1] / 2 - 5):int(template_pixel.shape[1] / 2 + 5)]
     thr = np.mean(thr)
     # t, otsu = cv2.threshold(template_pixel, thr*0.95, 255, cv2.THRESH_BINARY)
-    otsu = cv2.inRange(template_pixel, thr * 0.90, thr * 1.1)
-    otsu = cv2.morphologyEx(otsu, cv2.MORPH_OPEN, np.ones([5, 5]))
-    cv2.imwrite('/data/sdv1/whtm/mask/test/temp/otsu.jpg', otsu)
+    otsu = cv2.inRange(template_pixel, thr * 0.95, thr * 1.05)
+    otsu = cv2.morphologyEx(otsu, cv2.MORPH_OPEN, np.ones([15, 15]))
+    # cv2.imwrite('/data/sdv1/whtm/mask/test/temp/otsu.jpg', otsu)
     contours, hierarchy = cv2.findContours(otsu, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     # bbox_size = template_pixel.size
     try:
@@ -164,23 +180,28 @@ def judge_particle(det_df, result, image_color, image_gray):
         pixel_size = cv2.contourArea(cnt)
         pixel_mask = np.zeros(otsu.shape)
         pixel_mask = cv2.drawContours(pixel_mask, [cnt], 0, 255, -1)
-        cv2.imwrite('/data/sdv1/whtm/mask/test/temp/pixel_mask.jpg', pixel_mask)
+        # cv2.imwrite('/data/sdv1/whtm/mask/test/temp/pixel_mask.jpg', pixel_mask)
     except Exception as e:
         print('no contours detected in the template pixel!')
         det_df = filter_code(det_df, ['KP', 'PP'], 1, 'unknown')
+        det_df = filter_code(det_df, 'BP', 1, 'PN02')
         return det_df, image_color
 
-    bboxes, image_color = generate_pixels(image_color, template_pixel_cor, pixels)
+    bboxes = generate_pixels(image_color, template_pixel_cor, pixels)
     if bboxes is None:
         print('generate pixels failed!')
         det_df = filter_code(det_df, ['KP', 'PP'], 1, 'unknown')
+        det_df = filter_code(det_df, 'BP', 1, 'PN02')
         return det_df, image_color
+    image_color = draw_pixels(bboxes, image_color)
 
     bbox_particle_size = [-1] * len(bboxes)
 
     for i, bbox in enumerate(bboxes):
-        for idx, row in det_df[(det_df['category'] == 'KP') | (det_df['category'] == 'PP') | (det_df['category'] == 'BP')].iterrows():
+        for idx, row in det_df[
+            (det_df['category'] == 'KP') | (det_df['category'] == 'PP') | (det_df['category'] == 'BP')].iterrows():
             det_df.loc[idx, 'remark'].setdefault('covered', [])
+            det_df.loc[idx, 'remark'].setdefault('iof', [])
             particle_bbox = row['bbox']
             particle_type = row['category']
             if check_contact(bbox, particle_bbox):
@@ -188,58 +209,63 @@ def judge_particle(det_df, result, image_color, image_gray):
 
                 if pixel.shape != template_pixel.shape:
                     # print('margin pixel!')
-                    bbox_particle_size[i] = 0
-                    det_df.loc[idx, 'remark'].setdefault('covered', []).append(0)
-                else:
-                    # get particle mask
-                    overlap = get_overlap(bbox, particle_bbox)
-                    iof = bbox_overlap(particle_bbox, bbox, mode='iof')
-                    if iof >= 0.98:
-                        det_df.loc[idx, 'category'] = 'KP'
-                    elif iof <= 0.02:
-                        det_df.loc[idx, 'category'] = 'BP'
-                    mask_d = [overlap[0] - bbox[0], overlap[1] - bbox[1], overlap[2] - bbox[0],
-                              overlap[3] - bbox[1]]
-                    mask_d = [int(x) for x in mask_d]
-                    a = np.zeros_like(pixel)
-                    a = cv2.rectangle(a, (mask_d[0], mask_d[1]), (mask_d[2], mask_d[3]), 255, -1)
-                    mask = cv2.bitwise_and(pixel_mask.astype(np.int8), a.astype(np.int8))
-                    cv2.imwrite('/data/sdv1/whtm/mask/test/temp/a.jpg', a)
+                    pixel_h, pixel_w = pixel.shape
+                    x = bbox[:2].copy()
+                    if x[0] == 0:
+                        x[0] = bbox[2] - p_w
+                    if x[1] == 0:
+                        x[1] = bbox[3] - p_h
+                    pixel_ = np.ones((p_h, p_w))
+                    pixel_[(bbox[1] - x[1]):(bbox[3] - x[1]), (bbox[0] - x[0]):(bbox[2] - x[0])] = pixel
+                    pixel = pixel_.astype(np.uint8)
 
-                    # calculate pixel covered size
-                    t, otsud = cv2.threshold(pixel, thr * 0.95, 255, cv2.THRESH_BINARY)
-                    otsud = cv2.morphologyEx(otsud, cv2.MORPH_OPEN, np.ones([10, 10]))
-                    otsud = cv2.bitwise_not(otsud)
-                    cv2.imwrite('/data/sdv1/whtm/mask/test/temp/otsud.jpg', otsud)
-                    particle_area = cv2.bitwise_and(otsud, otsud, mask=mask.astype(np.uint8))
+                # get particle mask
+                overlap = get_overlap(bbox, particle_bbox)
+                iof = bbox_overlap(particle_bbox, bbox, mode='iof')
+                det_df.loc[idx, 'remark']['iof'].append(iof)
 
-                    # filter strange particle area
-                    mask_d = np.zeros_like(particle_area)
-                    s = cv2.erode(particle_area, np.ones([5, 5]))
-                    contours, _ = cv2.findContours(s, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-                    for cnt in contours:
-                        x, y, w, h = cv2.boundingRect(cnt)
-                        rect_size = w * h
-                        d_size = cv2.contourArea(cnt)
-                        extend = float(d_size) / rect_size
-                        aspect = float(w) / h
-                        # print(d_size, extend, aspect)
-                        if extend <= 0.2 or aspect <= 0.1 or aspect >= 10:
-                            mask_d = cv2.drawContours(mask_d, [cnt], -1, 255, -1)
+                mask_d = [overlap[0] - bbox[0], overlap[1] - bbox[1], overlap[2] - bbox[0],
+                          overlap[3] - bbox[1]]
+                mask_d = [int(x) for x in mask_d]
+                a = np.zeros_like(pixel)
+                a = cv2.rectangle(a, (mask_d[0], mask_d[1]), (mask_d[2], mask_d[3]), 255, -1)
+                mask = cv2.bitwise_and(pixel_mask.astype(np.int8), a.astype(np.int8))
+                # cv2.imwrite('/data/sdv1/whtm/mask/test/temp/a.jpg', a)
 
-                    mask_d = cv2.dilate(mask_d, np.ones([5, 5]))
-                    mask_d = cv2.bitwise_not(mask_d)
+                # calculate pixel covered size
+                otsud = cv2.inRange(pixel, thr * 0.9, thr * 1.1)
+                # t, otsud = cv2.threshold(pixel, thr * 0.95, 255, cv2.THRESH_BINARY)
+                otsud = cv2.bitwise_not(otsud)
+                otsud = cv2.morphologyEx(otsud, cv2.MORPH_CLOSE, np.ones([5, 5]))
+                # cv2.imwrite('/data/sdv1/whtm/mask/test/temp/otsud.jpg', otsud)
+                particle_area = cv2.bitwise_and(otsud, otsud, mask=mask.astype(np.uint8))
 
-                    d = cv2.bitwise_and(particle_area, particle_area, mask=mask_d)
-                    cv2.imwrite('/data/sdv1/whtm/mask/test/temp/d.jpg', d)
-                    particle_size = min(np.sum(d) / 255 / pixel_size, 1.0)
-                    bbox_particle_size[i] = max(particle_size, bbox_particle_size[i])
-                    det_df.loc[idx, 'remark'].setdefault('covered', []).append(particle_size)
+                r1 = cv2.morphologyEx(particle_area, cv2.MORPH_TOPHAT, np.ones((10, 10)))
+                r1 = cv2.bitwise_not(r1)
+                particle_area = cv2.bitwise_and(particle_area, particle_area, mask=r1)
+                particle_size = min(np.sum(particle_area) / 255 / pixel_size, 1.0)
+
+                bbox_particle_size[i] = max(particle_size, bbox_particle_size[i])
+                det_df.loc[idx, 'remark'].setdefault('covered', []).append(particle_size)
+
         if bbox_particle_size[i] == -1:
             bbox_particle_size[i] = 0
     draw_size(image_color, bboxes, bbox_particle_size)
 
+    # modify code
+    for idx, row in det_df[
+        (det_df['category'] == 'KP') | (det_df['category'] == 'PP') | (det_df['category'] == 'BP')].iterrows():
+        iof = row['remark']['iof']
+        size = row['size']
+        if iof != []:
+            if max(iof) >= 0.95 and size <= template_pixel_size * 1.05:
+                det_df.loc[idx, 'category'] = 'KP'
+            elif max(iof) <= 0.05 and size <= template_pixel_size * 1.2:
+                det_df.loc[idx, 'category'] = 'BP'
+    det_df = filter_code(det_df, 'BP', 1, 'PN02')
+
     total_particle_size = sum(bbox_particle_size)
+    # judge code PO01
     if total_particle_size >= 2:
         det_df = filter_code(det_df, 'KP', 1, 'PO01')
         det_df = filter_code(det_df, 'PP', 1, 'PO01')
@@ -251,22 +277,25 @@ def judge_particle(det_df, result, image_color, image_gray):
         coverd = row['remark']['covered']
         if coverd == []:
             max_size = 0
-            total_size = 0
         else:
             max_size = max(coverd)
-            total_size = sum(coverd)
         if max_size >= 0.5:
             det_df.loc[idx, 'category'] = 'K02'
         else:
             det_df.loc[idx, 'category'] = 'PO02'
 
-    kp_size_list = []
-    for idx, row in det_df[det_df['category'] == 'KP'].iterrows():
-        kp_size_list.extend(row['remark']['covered'])
-    kp_total_size = sum(kp_size_list)
-    if kp_total_size < 1:
+    # kp_size_list = []
+    # for idx, row in det_df[det_df['category'] == 'KP'].iterrows():
+    #     kp_size_list.extend(row['remark']['covered'])
+    # kp_total_size = sum(kp_size_list)
+    # if kp_total_size < 1:
+    #     filter_code(det_df, 'KP', 1, 'PO03')
+    # elif kp_total_size >= 1 and kp_total_size < 2:
+    #     filter_code(det_df, 'KP', 1, 'K02')
+
+    if total_particle_size < 1:
         filter_code(det_df, 'KP', 1, 'PO03')
-    elif kp_total_size >= 1 and kp_total_size < 2:
+    elif total_particle_size >= 1 and total_particle_size < 2:
         filter_code(det_df, 'KP', 1, 'K02')
 
     return det_df, image_color
@@ -296,9 +325,23 @@ def bbox_overlap(bbox1, bbox2, mode='iou'):
         return overlap_size / (bbox1_size + bbox2_size - overlap_size)
 
 
-def judge_short_count(det_df, result, image_color, image_gray):
+def judge_short_count(det_df, image_color, image_gray):
     # TODO: design algorithm to count short pixels number
-    pass
+    if 'pixel' in det_df['category'].values or 'JC' in det_df['category'].values or 'DK' in det_df['category'].values:
+        template_pixel = det_df.loc[(det_df['category'] == 'pixel') | (det_df['category'] == 'JC') | (
+                det_df['category'] == 'DK'), 'bbox'].values[0]
+        pixel_size = (template_pixel[2] - template_pixel[0]) * (template_pixel[3] - template_pixel[1])
+        count = 0
+        for idx, row in det_df[det_df['category'] == 'LK'].iterrows():
+            bbox = row['bbox']
+            lk_size = (bbox[2] - bbox[0]) * (bbox[3] - bbox[1])
+            if lk_size / pixel_size >= 8:
+                count += 2
+            else:
+                count += 1
+        return count
+    else:
+        return -1
 
 
 def draw_code(img, code, score, position, size=2):
@@ -306,7 +349,7 @@ def draw_code(img, code, score, position, size=2):
                 cv2.FONT_HERSHEY_SIMPLEX, size, (0, 255, 0), 3)
 
 
-def draw_bboxes(img, img_name, mmdet_results, codes, thr=0):
+def draw_bboxes(img, mmdet_results, codes, thr=0):
     for i, bboxes in enumerate(mmdet_results):
         for bbox in bboxes:
             bbox = np.array(bbox)
@@ -355,18 +398,21 @@ def generate_pixels(img_c, anchor, pixels):
         y_interval = np.min(r_[np.where(r_[:, 0] < error)][:, 1])
     except Exception as e:
         # print(e)
-        return None, img_c
-    error = np.mean([x_interval, y_interval]) * 0.5
+        return None
+    error = np.mean([obj_h, obj_w])
     all_c = make_grid(anchor, x_interval, y_interval, h, w)
 
     while True:
         left_pixels = []
-        all_c_check = np.round((np.array(all_c) / error).astype(float))
+        all_c_check = np.array(all_c)
+        # all_c_check = np.round((np.array(all_c) / error).astype(float))
         for p in pixels[1:]:
             p = p[:2].astype(int)
-            p_check = np.round(p / error)
-            if p_check not in all_c_check:
+            dist = np.abs(all_c_check - p)
+            if not np.any(np.bitwise_and(dist[:, 0] < error, dist[:, 1] < error)):
                 left_pixels.append(p)
+            # p_check = np.round(p / error)
+            # if p_check not in all_c_check:
         if len(left_pixels) == 0:
             break
         else:
@@ -377,7 +423,7 @@ def generate_pixels(img_c, anchor, pixels):
     for c in all_c:
         # cv2.rectangle(cent_img, (c[0], c[1]), (c[0]+obj_w, c[1]+obj_h), (0, 0, 255), -1)
         bbox = [c[0], c[1], c[0] + obj_w, c[1] + obj_h]
-        bbox = np.clip(bbox, 0, max(w, h))
+        bbox = [np.clip(bbox[0], 0, w), np.clip(bbox[1], 0, h), np.clip(bbox[2], 0, w), np.clip(bbox[3], 0, h)]
         img_bbox = [0, 0, w, h]
         overlap = [max(bbox[0], img_bbox[0]), max(bbox[1], img_bbox[1]), min(bbox[2], img_bbox[2]),
                    min(bbox[3], img_bbox[3])]
@@ -392,19 +438,23 @@ def generate_pixels(img_c, anchor, pixels):
     # ed = time.time()
     # print('spend time: {:.2f}s'.format(ed - st))
 
-    cent_img = np.zeros_like(img_c)
-    for b in bboxes:
-        cv2.rectangle(cent_img, (b[0], b[1]), (b[2], b[3]), (0, 0, 255), -1)
-    added_img = cv2.addWeighted(img_c, 1, cent_img, 0.5, 0)
     # save_path = os.path.join(save_dir, image_name)
     # cv2.imwrite(save_path, added_img)
 
-    return bboxes, added_img
+    return bboxes
+
+
+def draw_pixels(bboxes, image_color):
+    # cent_img = np.zeros_like(image_color)
+    for b in bboxes:
+        cv2.rectangle(image_color, (b[0], b[1]), (b[2], b[3]), (0, 255, 0), 3)
+    # added_img = cv2.addWeighted(image_color, 1, cent_img, 0.3, 0)
+    return image_color
 
 
 def make_grid(anchor, x_interval, y_interval, h, w):
-    num_rows = int(h / y_interval)
-    num_cols = int(w / x_interval)
+    num_rows = int(h / y_interval) + 1
+    num_cols = int(w / x_interval) + 1
 
     all_centroids = []
     #     print(centroids_)
@@ -494,7 +544,7 @@ def check_code_exist(df, code):
         return False
 
 
-def final_judge(det_df, prio_order=None, prio_weight=0.8):
+def final_judge(det_df, prio_order=None, prio_weight=0.5):
     if len(det_df) != 0:
         Max_conf = det_df['score'].values.max()
         prio_thr = Max_conf * prio_weight

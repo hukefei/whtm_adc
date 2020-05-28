@@ -18,17 +18,14 @@ def model_test(imgs,
     model = init_detector(cfg_file, ckpt_file, device=device)
     final_result = []
 
-    if len(imgs) == 1:
-        final_result = inference_detector(model, imgs[0])
-    else:
-        progressbar = tqdm.tqdm(imgs)
-        for _, img in enumerate(progressbar):
-            image = cv2.imread(img)
-            if image is None:
-                print('image {} is empty'.format(img))
-                final_result.append([])
-            result = inference_detector(model, image)
-            final_result.append(result)
+    progressbar = tqdm.tqdm(imgs)
+    for _, img in enumerate(progressbar):
+        image = cv2.imread(img)
+        if image is None:
+            print('image {} is empty'.format(img))
+            final_result.append([])
+        result = inference_detector(model, image)
+        final_result.append(result)
 
     if save_file is not None:
         with open(save_file, 'wb') as fp:

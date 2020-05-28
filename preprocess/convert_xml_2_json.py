@@ -90,16 +90,16 @@ def convert(name_list, xml_dir, save_json, code_dictionary):
 
 
 if __name__ == '__main__':
-    file_dir = r'F:\WHTM\MASK\data\train_val\val'
-    img_dir = r'F:\WHTM\MASK\data\train_val\val'
+    file_dir = r'F:\V1OVLI\V1\annotations'
+    img_dir = r'F:\V1OVLI\V1\images_jpg'
     name_lst = []
     for root, _, files in os.walk(img_dir):
         for file in files:
             if file.endswith('jpg') or file.endswith('JPG'):
                 name_lst.append(file[:-4])
 
-    json_file = r'F:\WHTM\MASK\data\train_val\val.json'
-    code_file = r'F:\WHTM\MASK\data\train_val\classes.txt'
+    json_file = r'F:\V1OVLI\V1\train.json'
+    code_file = r'F:\V1OVLI\V1\classes.txt'
     code = CodeDictionary(code_file)
 
     convert(name_lst, file_dir, json_file, code)

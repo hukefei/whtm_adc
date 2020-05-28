@@ -1,4 +1,4 @@
-from rule.rule_24000 import default_rule
+from rule.rule_21101 import default_rule
 import cv2
 import os, glob
 import pandas as pd
