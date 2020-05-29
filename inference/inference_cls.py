@@ -7,6 +7,7 @@ import json
 import shutil
 
 
+
 def inference_cls(result_file,
                   imgs,
                   config,

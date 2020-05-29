@@ -7,7 +7,7 @@ import pandas as pd
 path = r'/data/sdv1/whtm/mask/model/FMM_0525/'
 opt = process(path)
 img_path = r'/data/sdv1/whtm/mask/data/total_difficult/'
-imgs = glob.glob(os.path.join(img_path, 'B02/*.jpg'))
+imgs = glob.glob(os.path.join(img_path, 'E03/*.jpg'))
 # imgs = [os.path.join(img_path, 'PO03/u4639fh1fbebw207_000068997_-00617449_before.jpg')]
 progressbar = tqdm.tqdm(imgs)
 save_dir = r'/data/sdv1/whtm/mask/test/0528_5'
