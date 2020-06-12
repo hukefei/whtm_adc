@@ -21,8 +21,8 @@ def train_test_split(img_dir, xml_dir, train_size, output):
             shutil.copy(os.path.join(xml_dir, xml), os.path.join(test_dir, xml))
 
 if __name__ == '__main__':
-    img_dir = r'F:\WHTM\MASK\data\train_val\all'
-    anns_dir = r'F:\WHTM\MASK\data\train_val\all'
+    img_dir = r'F:\WHTM\MASK\data\false\false_labelled'
+    anns_dir = r'F:\WHTM\MASK\data\false\false_xml'
     TRAIN_SIZE = 0.8
-    output = r'F:\WHTM\MASK\data\train_val'
+    output = r'F:\WHTM\MASK\data\trainval_0601'
     train_test_split(img_dir, anns_dir, TRAIN_SIZE, output)

@@ -4,21 +4,20 @@ import shutil
 import os
 import pandas as pd
 
-path = r'/data/sdv1/whtm/mask/model/FMM_0525/'
+path = r'/data/sdv1/whtm/mask/model/FMM_0611/'
 opt = process(path)
-img_path = r'/data/sdv1/whtm/mask/data/total_difficult/'
-imgs = glob.glob(os.path.join(img_path, 'E03/*.jpg'))
-# imgs = [os.path.join(img_path, 'PO03/u4639fh1fbebw207_000068997_-00617449_before.jpg')]
+img_path = r'/data/sdv1/whtm/mask/test/FMM_color_test/L1AMI100/'
+imgs = glob.glob(os.path.join(img_path, '*/*/*.jpg'))
+# imgs = [os.path.join(img_path, '*/*/SC655FH1HAERT202_-285424_-656-5246_before.jpg')]
 progressbar = tqdm.tqdm(imgs)
-save_dir = r'/data/sdv1/whtm/mask/test/0528_5'
+save_dir = r'/data/sdv1/whtm/mask/result/0612/AMI100_test_1'
 save_correct_image = False
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 
 result = []
 for img in progressbar:
-    oic_code = img.split('/')[-2]
-    # product = img.split('/')[-2]
+    oic_code = img.split('/')[-3]
     image_name = img.split('/')[-1]
     code, bbox, score, image = predict(img, **opt)
     save_path = os.path.join(save_dir, oic_code, code)

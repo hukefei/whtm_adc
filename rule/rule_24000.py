@@ -163,6 +163,12 @@ def default_rule(det_lst, img_path, img_name, config, codes, draw_img=False, **k
         det_df.loc[check, 'category'] = 'RES04'
         det_df.loc[check, 'score'] = np.average(det_df.loc[check, 'score'])
 
+    # judge AZ05
+    check = (det_df['category'] == 'COM01') & (det_df['score'] >= 0.2)
+    if sum(check) >= 5:
+        det_df.loc[check, 'category'] = 'AZ05'
+        det_df.loc[check, 'score'] = np.average(det_df.loc[check, 'score'])
+
 
     # CHECK COM01/COM17
     if 'COM01' in det_df['category'].values:
@@ -170,7 +176,7 @@ def default_rule(det_lst, img_path, img_name, config, codes, draw_img=False, **k
             bbox = det_df.loc[idx, 'bbox']
             width = bbox[2] - bbox[0]
             height = bbox[3] - bbox[1]
-            if max(width / 5, height / 5) >= 100:
+            if max(width / 5, height / 5) >= 80:
                 det_df.loc[idx, 'category'] = 'COM17'
 
     # CHECK COM22/COM18
@@ -179,7 +185,7 @@ def default_rule(det_lst, img_path, img_name, config, codes, draw_img=False, **k
             bbox = det_df.loc[idx, 'bbox']
             width = bbox[2] - bbox[0]
             height = bbox[3] - bbox[1]
-            if max(width / 5, height / 5) >= 100:
+            if max(width / 5, height / 5) >= 80:
                 det_df.loc[idx, 'category'] = 'COM18'
 
 

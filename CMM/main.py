@@ -11,12 +11,13 @@ from PIL import Image
 
 def process(path):
     file = os.listdir(path)
-    assert 'model.ckpt' in file, 'model checkpoint should be in the path'
+    assert 'model.pth' in file, 'model checkpoint should be in the path'
     assert 'classes.txt' in file, 'classes file should be in the path'
-    model_ckpt = os.path.join(path, 'model.ckpt')
+    model_ckpt = os.path.join(path, 'model.pth')
     model_ckpt = torch.load(model_ckpt)['state_dict']
     my_model = resnet18_cbam(model_ckpt, num_classes=4)
     my_model = my_model.cuda()
+    my_model = my_model.eval()
 
     with open(os.path.join(path, 'classes.txt'), 'r') as f:
         classes = f.read().splitlines()
@@ -28,6 +29,7 @@ def predict(img, *args, **kwargs):
     model = kwargs.get('model')
     classes = kwargs.get('classes')
     img_ = Image.open(img).convert('RGB')
+    img_color = np.array(img_.copy())
 
     transformer = transforms.Compose([
         transforms.Resize((224, 224)),
@@ -40,10 +42,9 @@ def predict(img, *args, **kwargs):
     result = model(img_)
     output = F.softmax(result, dim=1).data.cpu()
     code = classes[torch.argmax(output)]
-    score = torch.max(output)
-    print(code)
+    score = torch.max(output).numpy()
 
-    return code, [], score, None
+    return code, [], score, img_color
 
 
 def conv3x3(in_planes, out_planes, stride=1):
