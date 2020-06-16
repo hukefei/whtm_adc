@@ -10,13 +10,13 @@ from xml.etree import ElementTree as ET
 import glob
 
 def main():
-    path = r'/data/sdv1/whtm/mask/model/FMM_0606/'
+    path = r'/data/sdv1/whtm/mask/model/FMM_0611/'
     opt = process(path)
-    img_path = r'/data/sdv1/whtm/mask/data/0611/images'
-    ann_path = r'/data/sdv1/whtm/mask/data/0611/annotations'
+    img_path = r'/data/sdv1/whtm/mask/data/0615/original_images'
+    ann_path = r'/data/sdv1/whtm/mask/data/0615/annotations'
     imgs = glob.glob(os.path.join(img_path, '*.jpg'))
     progressbar = tqdm.tqdm(imgs)
-    save_dir = r'/data/sdv1/whtm/mask/data/0611/add_pixels/'
+    save_dir = r'/data/sdv1/whtm/mask/data/0615/add_pixels/'
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 

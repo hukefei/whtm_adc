@@ -1,16 +1,16 @@
-from mask.main import *
+from CMM_OD.main import *
 import glob
 import shutil
 import os
 import pandas as pd
 
-path = r'/data/sdv1/whtm/mask/model/FMM_0615/'
+path = r'/data/sdv1/whtm/CMM/model/OD_0616_faster/'
 opt = process(path)
-img_path = r'/data/sdv1/whtm/mask/test/AMI200_FMM_REVIEW_CHANGE_0616/'
+img_path = r'/data/sdv1/whtm/CMM/test/CMM_TEST_ADD_0609/'
 imgs = glob.glob(os.path.join(img_path, '*/*.jpg'))
 # imgs = [os.path.join(img_path, '*/*/SC655FH1HAERT202_-285424_-656-5246_before.jpg')]
 progressbar = tqdm.tqdm(imgs)
-save_dir = r'/data/sdv1/whtm/mask/result/0616/AMI200_1737'
+save_dir = r'/data/sdv1/whtm/CMM/result/0616/CMM_TEST_ADD_0609_3'
 save_correct_image = False
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
@@ -23,7 +23,7 @@ for img in progressbar:
     save_path = os.path.join(save_dir, oic_code, code)
     if not os.path.exists(save_path):
         os.makedirs(save_path)
-    # shutil.copy(img, os.path.join(save_path, image_name))
+
     if not save_correct_image:
         if oic_code != code:
             cv2.imwrite(os.path.join(save_path, image_name), image)

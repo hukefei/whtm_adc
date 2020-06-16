@@ -7,7 +7,7 @@ import tqdm
 import itertools
 import pandas as pd
 
-PRIO_ORDER = ['unknown', 'E01', 'F01', 'PO01', 'E02', 'LA03', 'LA02', 'K02', 'PO02', 'PO03', 'E03', 'PN02', 'B02',
+PRIO_ORDER = ['unknown', 'E01', 'F01', 'PO01', 'E02', 'LA03', 'LA02', 'K02', 'PO02', 'PO03', 'PN02', 'E03', 'B02',
               'FALSE']
 PRIO_WEIGHT = 0.6
 KILLER = ['E01', 'F01', 'PO01']
@@ -24,23 +24,24 @@ def predict(img, *args, **kwargs):
     image_name = img.replace('\\', '/').split('/')[-1]
     image_color = cv2.imread(img, 1)
 
-    # pkl_file = os.path.join(save_dir, image_name.replace('jpg', 'pkl'))
-    # if os.path.exists(pkl_file):
-    #     with open(pkl_file, 'rb') as f:
-    #         mmdet_result = pickle.load(f)
-    # else:
-    #     mmdet_result = inference_detector(model, image_color)
-    #     with open(pkl_file, 'wb') as f:
-    #         pickle.dump(mmdet_result, f)
-
     mmdet_result = inference_detector(model, image_color)
-    # pixels = mmdet_result[-1]
-    # mmdet_result = all_classes_nms(mmdet_result[:-1], 0.005)
-    # mmdet_result.append(pixels)
-    mmdet_result = all_classes_nms(mmdet_result, 0.7)
+    mmdet_result = compose_nms(mmdet_result, classes)
     code, bbox, score, image = judge_code(mmdet_result, image_color, image_name, classes)
 
     return code, bbox, score, image
+
+def compose_nms(mmdet_result, classes):
+    mmdet_result = all_classes_nms(mmdet_result, 0.7)
+    pair = [('B02', 'E03', 0.01, 'iof'), ('E03', 'BP', 0.01, 'iof')]
+    for p in pair:
+        c1, c2, thr, mode = p
+        c1 = classes.index(c1)
+        c2 = classes.index(c2)
+        m_result = [mmdet_result[c1], mmdet_result[c2]]
+        m_result = all_classes_nms(m_result, thr, mode)
+        mmdet_result[c1] = m_result[0]
+        mmdet_result[c2] = m_result[1]
+    return mmdet_result
 
 
 def init_model(config, checkpoint, *args, **kwargs):
@@ -265,7 +266,7 @@ def judge_particle(det_df, image_color, image_gray):
     for idx, row in det_df[det_df['category'] == 'PP'].iterrows():
         covered = row['remark']['covered']
         iof = row['remark']['iof']
-        if np.sum(covered) <= 0.01 and sum(iof) <= 0.1:
+        if np.sum(covered) <= 0.01 and sum(iof) <= 0.2:
             print('PP -> BP')
             det_df.loc[idx, 'category'] = 'BP'
 
@@ -588,20 +589,28 @@ def check_code_exist(df, code):
 
 def final_judge(det_df, prio_order=None, prio_weight=0.5):
     if len(det_df) != 0:
+        for killer in KILLER:
+            if killer in det_df.category.values:
+                final_code = killer
+                best_score = det_df.loc[det_df['category'] == final_code, 'score'].max()
+                best_idx = int(det_df.loc[det_df['category'] == final_code, 'score'].idxmax())
+                best_bbox = det_df.loc[best_idx, 'bbox']
+                return final_code, best_bbox, best_score
+
         Max_conf = det_df['score'].values.max()
         prio_thr = Max_conf * prio_weight
         filtered_final = det_df[det_df['score'] >= prio_thr]
 
         final_code = prio_check(prio_order, list(filtered_final['category']))
-        if final_code == 'NOT INPLEMENTED':
-            return 'NOT INPLEMENTED', [], 0
+        if final_code == 'NOT_INPLEMENTED':
+            return final_code, [], 0
         best_score = filtered_final.loc[filtered_final['category'] == final_code, 'score'].max()
         best_idx = int(filtered_final.loc[filtered_final['category'] == final_code, 'score'].idxmax())
         best_bbox = filtered_final.loc[best_idx, 'bbox']
     else:
         final_code = 'FALSE'
         best_bbox = []
-        best_score = 1
+        best_score = 0
     return final_code, best_bbox, best_score
 
 
@@ -614,12 +623,12 @@ def prio_check(prio_lst, code_lst):
         idx = prio_lst.index(code)
         idx_lst.append(idx)
     if idx_lst == []:
-        return 'NOT INPLEMENTED'
+        return 'NOT_INPLEMENTED'
     final_code = prio_lst[min(idx_lst)]
     return final_code
 
 
-def cpu_nms(dets, thresh):
+def cpu_nms(dets, thresh, mode='iou'):
     x1 = dets[:, 0]
     y1 = dets[:, 1]
     x2 = dets[:, 2]
@@ -636,13 +645,16 @@ def cpu_nms(dets, thresh):
         yy2 = np.minimum(y2[i], y2[order[1:]])
         w = np.maximum(0, xx2 - xx1 + 1)
         h = np.maximum(0, yy2 - yy1 + 1)
-        over = (w * h) / (area[i] + area[order[1:]] - w * h)
+        if mode == 'iou':
+            over = (w * h) / (area[i] + area[order[1:]] - w * h)
+        elif mode == 'iof':
+            over = (w * h) / (area[i])
         index = np.where(over <= thresh)[0]
         order = order[index + 1]
     return keep
 
 
-def all_classes_nms(mmdet_result, thr=0.8):
+def all_classes_nms(mmdet_result, thr=0.8, mode='iou'):
     num = len(mmdet_result)
     bboxes_ = []
     labels_ = []
@@ -654,7 +666,7 @@ def all_classes_nms(mmdet_result, thr=0.8):
     labels_ = np.array(labels_)
     if len(bboxes) == 0:
         return mmdet_result
-    keep = cpu_nms(bboxes_, thr)
+    keep = cpu_nms(bboxes_, thr, mode)
     keep_bboxes = bboxes_[keep]
     keep_labels = labels_[keep]
     final_ = []
