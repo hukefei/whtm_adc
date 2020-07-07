@@ -3,14 +3,18 @@ import glob
 import shutil
 import os
 import pandas as pd
+import datetime
 
-path = r'/data/sdv1/whtm/CMM/model/OD_0616_faster/'
+path = r'/data/sdv1/whtm/CMM/model/0628_faster/'
 opt = process(path)
 img_path = r'/data/sdv1/whtm/CMM/test/CMM_TEST_ADD_0609/'
 imgs = glob.glob(os.path.join(img_path, '*/*.jpg'))
 # imgs = [os.path.join(img_path, '*/*/SC655FH1HAERT202_-285424_-656-5246_before.jpg')]
 progressbar = tqdm.tqdm(imgs)
-save_dir = r'/data/sdv1/whtm/CMM/result/0616/CMM_TEST_ADD_0609_3'
+dateTime_p = datetime.datetime.now()
+str_d = datetime.datetime.strftime(dateTime_p, '%m%d')
+str_p = datetime.datetime.strftime(dateTime_p, '%H%M%S')
+save_dir = r'/data/sdv1/whtm/CMM/result/{}/CMM_{}'.format(str_d, str_p)
 save_correct_image = False
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)

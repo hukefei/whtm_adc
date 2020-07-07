@@ -7,40 +7,40 @@ import tqdm
 import itertools
 import pandas as pd
 
-PRIO_ORDER = ['unknown', 'E01', 'F01', 'PO01', 'E02', 'LA03', 'LA02', 'K02', 'PO02', 'PO03', 'PN02', 'E03', 'B02',
+PRIO_ORDER = ['CN', 'E01', 'F01', 'PO01', 'E02', 'LA03', 'LA02', 'unknown', 'K02', 'PO02', 'PO03', 'PN02', 'E03', 'B02',
               'FALSE']
-PRIO_WEIGHT = 0.6
-KILLER = ['E01', 'F01', 'PO01']
+PRIO_WEIGHT = 0.5
+KILLER = ['CN', 'E01', 'F01', 'PO01']
 
 
-# save_dir = r'/data/sdv1/whtm/mask/test/0525_particle/result/pkl/'
-
-
-def predict(img, *args, **kwargs):
+def predict(img, **kwargs):
     assert isinstance(img, str)
     model = kwargs.get('model')
     classes = kwargs.get('classes')
 
     image_name = img.replace('\\', '/').split('/')[-1]
-    image_color = cv2.imread(img, 1)
-
-    mmdet_result = inference_detector(model, image_color)
+    image_color = cv2.imread(img)
+    mmdet_result = inference_detector(model, img)
     mmdet_result = compose_nms(mmdet_result, classes)
     code, bbox, score, image = judge_code(mmdet_result, image_color, image_name, classes)
 
     return code, bbox, score, image
 
 def compose_nms(mmdet_result, classes):
-    mmdet_result = all_classes_nms(mmdet_result, 0.7)
-    pair = [('B02', 'E03', 0.01, 'iof'), ('E03', 'BP', 0.01, 'iof')]
+    nonkiller = classes.copy()
+    nonkiller.remove('F01')
+    nonkiller.remove('DK')
+    nonkiller.remove('LK')
+    nonkiller.remove('CN')
+    nonkiller.remove('pixel')
+    pair = [(['B02', 'E03'], 0.5, 'iof-h'), (['E03', 'BP'], 0.5, 'iof-l'), (nonkiller, 0.7, 'iou')]
     for p in pair:
-        c1, c2, thr, mode = p
-        c1 = classes.index(c1)
-        c2 = classes.index(c2)
-        m_result = [mmdet_result[c1], mmdet_result[c2]]
+        c_l, thr, mode = p
+        index_list = [classes.index(c) for c in c_l]
+        m_result = [mmdet_result[i] for i in index_list]
         m_result = all_classes_nms(m_result, thr, mode)
-        mmdet_result[c1] = m_result[0]
-        mmdet_result[c2] = m_result[1]
+        for idx, i in enumerate(index_list):
+            mmdet_result[i] = m_result[idx]
     return mmdet_result
 
 
@@ -51,12 +51,12 @@ def init_model(config, checkpoint, *args, **kwargs):
 
 def process(path):
     files = os.listdir(path)
-    assert 'config.py' in files, 'mmdet config file shoule be included'
+    assert 'config_color.py' in files, 'mmdet config file shoule be included'
     assert 'model.pth' in files, 'checkpoint file should be included'
     assert 'classes.txt' in files, 'classes file should be included'
-    config = os.path.join(path, 'config.py')
+    config_color = os.path.join(path, 'config_color.py')
     checkpoint = os.path.join(path, 'model.pth')
-    model = init_model(config, checkpoint)
+    model = init_model(config_color, checkpoint)
     with open(os.path.join(path, 'classes.txt'), 'r') as f:
         classes = f.read().splitlines()
 
@@ -108,6 +108,7 @@ def judge_code(mmdet_result, image_color, image_name, classes):
     all.remove('pixel')
     det_df = filter_code(det_df, all, 0.1)
     det_df = filter_code(det_df, 'pixel', 0.3)
+    det_df = filter_code(det_df, 'CN', 0.4)
 
     # judge LA series
     det_df = count_code(det_df, 'JC', 2, 'LA02')
@@ -125,8 +126,6 @@ def judge_code(mmdet_result, image_color, image_name, classes):
 
     # judge E series
     det_df = count_code(det_df, 'DK', 2, 'E01', 'E02')
-    # det_df = count_code(det_df, 'LK', 2, 'E01', 'E02')
-    # det_df = filter_code(det_df, 'SLK', 1, 'E01')
 
     # judge particle
     if ('KP' in det_df['category'].values) or ('PP' in det_df['category'].values) or (
@@ -138,7 +137,6 @@ def judge_code(mmdet_result, image_color, image_name, classes):
     # final judge
     code, bbox, score = final_judge(det_df, PRIO_ORDER, prio_weight=PRIO_WEIGHT)
     draw_code(image_color, code, score, (0, h))
-    # cv2.imwrite(os.path.join('/data/sdv1/whtm/mask/test/result/', image_name), image_draw)
 
     return code, bbox, score, image_color
 
@@ -230,7 +228,6 @@ def judge_particle(det_df, image_color, image_gray):
                 a = np.zeros_like(pixel)
                 a = cv2.rectangle(a, (mask_d[0], mask_d[1]), (mask_d[2], mask_d[3]), 255, -1)
                 mask = cv2.bitwise_and(pixel_mask.astype(np.int8), a.astype(np.int8))
-                # cv2.imwrite('/data/sdv1/whtm/mask/test/temp/a.jpg', a)
 
                 # calculate pixel covered size
                 otsud = cv2.inRange(pixel, thr * 0.95, thr * 1.05)
@@ -266,7 +263,7 @@ def judge_particle(det_df, image_color, image_gray):
     for idx, row in det_df[det_df['category'] == 'PP'].iterrows():
         covered = row['remark']['covered']
         iof = row['remark']['iof']
-        if np.sum(covered) <= 0.01 and sum(iof) <= 0.2:
+        if np.sum(covered) <= 0.01 and sum(iof) <= 0.1:
             print('PP -> BP')
             det_df.loc[idx, 'category'] = 'BP'
 
@@ -427,7 +424,6 @@ def generate_pixels(img_c, anchor, pixels):
 
     bboxes = []
     for c in all_c:
-        # cv2.rectangle(cent_img, (c[0], c[1]), (c[0]+obj_w, c[1]+obj_h), (0, 0, 255), -1)
         bbox = [c[0], c[1], c[0] + obj_w, c[1] + obj_h]
         bbox = [np.clip(bbox[0], 0, w), np.clip(bbox[1], 0, h), np.clip(bbox[2], 0, w), np.clip(bbox[3], 0, h)]
         img_bbox = [0, 0, w, h]
@@ -435,7 +431,6 @@ def generate_pixels(img_c, anchor, pixels):
                    min(bbox[3], img_bbox[3])]
         overlap_size = max((overlap[2] - overlap[0]), 0) * max((overlap[3] - overlap[1]), 0)
         if overlap_size > 0:
-            # print(overlap_size, bbox, overlap)
             bboxes.append(bbox)
 
     bboxes = np.array(bboxes)
@@ -483,10 +478,8 @@ def get_threshold(image_gray, pixels):
     return thr
 
 def draw_pixels(bboxes, image_color):
-    # cent_img = np.zeros_like(image_color)
     for b in bboxes:
         cv2.rectangle(image_color, (b[0], b[1]), (b[2], b[3]), (0, 255, 0), 3)
-    # added_img = cv2.addWeighted(image_color, 1, cent_img, 0.3, 0)
     return image_color
 
 
@@ -495,11 +488,9 @@ def make_grid(anchor, x_interval, y_interval, h, w):
     num_cols = int(w / x_interval) + 1
 
     all_centroids = []
-    #     print(centroids_)
     bias_x = int((anchor[0] - h / 2) / x_interval)
     bias_y = int((anchor[1] - w / 2) / y_interval)
     all_centroids.append(anchor[:2])
-    # select a center to generate the grid
     for i, j in itertools.product(range(-num_rows - bias_x, num_rows + 1 - bias_x),
                                   range(-num_cols - bias_y, num_cols + 1 - bias_y)):
         new_x = anchor[0] + i * x_interval
@@ -507,7 +498,6 @@ def make_grid(anchor, x_interval, y_interval, h, w):
         if i == 0 and j == 0:
             continue
         all_centroids.append(np.array([new_x, new_y]))
-    # print(all_centroids)
     return all_centroids
 
 
@@ -647,8 +637,10 @@ def cpu_nms(dets, thresh, mode='iou'):
         h = np.maximum(0, yy2 - yy1 + 1)
         if mode == 'iou':
             over = (w * h) / (area[i] + area[order[1:]] - w * h)
-        elif mode == 'iof':
-            over = (w * h) / (area[i])
+        elif mode == 'iof-h':
+            over = (w * h) / area[i]
+        elif mode == 'iof-l':
+            over = (w * h) / area[order[1:]]
         index = np.where(over <= thresh)[0]
         order = order[index + 1]
     return keep
@@ -674,6 +666,8 @@ def all_classes_nms(mmdet_result, thr=0.8, mode='iou'):
         final_.append([])
     for bbox, label in zip(keep_bboxes, keep_labels):
         final_[label].append(bbox)
+    for idx, l in enumerate(final_):
+        final_[idx] = np.array(l)
     return final_
 
 
@@ -684,5 +678,3 @@ if __name__ == '__main__':
     progressbar = tqdm.tqdm(glob.glob(os.path.join(img_path, '*.jpg')))
     for img in progressbar:
         code, bbox, score, _ = predict(img, **opt)
-    # img = r'/data/sdv1/whtm/mask/test/data/U4549FH2FAHRT109_-380159-2_122-419_before.jpg'
-    # code, bbox, score, _ = predict(img, **opt)

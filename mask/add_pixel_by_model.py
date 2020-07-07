@@ -10,13 +10,13 @@ from xml.etree import ElementTree as ET
 import glob
 
 def main():
-    path = r'/data/sdv1/whtm/mask/model/FMM_0611/'
+    path = r'/data/sdv1/whtm/mask/model/FMM_color_0701/'
     opt = process(path)
-    img_path = r'/data/sdv1/whtm/mask/data/0615/original_images'
-    ann_path = r'/data/sdv1/whtm/mask/data/0615/annotations'
+    img_path = r'/data/sdv1/whtm/mask/data/0707/images'
+    ann_path = r'/data/sdv1/whtm/mask/data/0707/annotations'
     imgs = glob.glob(os.path.join(img_path, '*.jpg'))
     progressbar = tqdm.tqdm(imgs)
-    save_dir = r'/data/sdv1/whtm/mask/data/0615/add_pixels/'
+    save_dir = r'/data/sdv1/whtm/mask/data/0707/add_pixels/'
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
@@ -75,10 +75,10 @@ def init_model(config, checkpoint, *args, **kwargs):
 
 def process(path):
     files = os.listdir(path)
-    assert 'config.py' in files, 'mmdet config file shoule be included'
+    assert 'config_color.py' in files, 'mmdet config file shoule be included'
     assert 'model.pth' in files, 'checkpoint file should be included'
     assert 'classes.txt' in files, 'classes file should be included'
-    config = os.path.join(path, 'config.py')
+    config = os.path.join(path, 'config_color.py')
     checkpoint = os.path.join(path, 'model.pth')
     model = init_model(config, checkpoint)
     with open(os.path.join(path, 'classes.txt'), 'r') as f:

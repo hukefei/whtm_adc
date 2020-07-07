@@ -7,9 +7,11 @@ import tqdm
 import itertools
 import pandas as pd
 
-PRIO_ORDER = ['CP03', 'CE03', 'CB02', 'FALSE']
-PRIO_WEIGHT = 0.6
-THRESHOLD = 0.3
+PRIO_ORDER = ['CP03', 'CE03', 'CB02', 'CFALSE']
+PRIO_WEIGHT = 0.8
+THRESHOLD = 0.5
+FALSE_NAME = 'CFALSE'
+OTHER_NAME = 'NOT_INPLEMENTED'
 
 
 def predict(img, **kwargs):
@@ -19,7 +21,7 @@ def predict(img, **kwargs):
 
     image_name = img.replace('\\', '/').split('/')[-1]
     image_color = cv2.imread(img, 1)
-    image_color = cv2.resize(image_color, (512, 512))
+    # image_color = cv2.resize(image_color, (512, 512))
 
     mmdet_result = inference_detector(model, image_color)
     mmdet_result = all_classes_nms(mmdet_result, 0.7)
@@ -162,15 +164,15 @@ def final_judge(det_df, prio_order=None, prio_weight=0.5):
         filtered_final = det_df[det_df['score'] >= prio_thr]
 
         final_code = prio_check(prio_order, list(filtered_final['category']))
-        if final_code == 'NOT_INPLEMENTED':
+        if final_code == OTHER_NAME:
             return final_code, [], 0
         best_score = filtered_final.loc[filtered_final['category'] == final_code, 'score'].max()
         best_idx = int(filtered_final.loc[filtered_final['category'] == final_code, 'score'].idxmax())
         best_bbox = filtered_final.loc[best_idx, 'bbox']
     else:
-        final_code = 'FALSE'
+        final_code = FALSE_NAME
         best_bbox = []
-        best_score = 0
+        best_score = 1
     return final_code, best_bbox, best_score
 
 
@@ -183,7 +185,7 @@ def prio_check(prio_lst, code_lst):
         idx = prio_lst.index(code)
         idx_lst.append(idx)
     if idx_lst == []:
-        return 'NOT_INPLEMENTED'
+        return OTHER_NAME
     final_code = prio_lst[min(idx_lst)]
     return final_code
 
