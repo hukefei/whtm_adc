@@ -9,7 +9,7 @@ import pandas as pd
 
 PRIO_ORDER = ['CN', 'E01', 'F01', 'PO01', 'E02', 'LA03', 'LA02', 'unknown', 'K02', 'PO02', 'PO03', 'PN02', 'E03', 'B02',
               'FALSE']
-PRIO_WEIGHT = 0.5
+PRIO_WEIGHT = 0.8
 KILLER = ['CN', 'E01', 'F01', 'PO01']
 
 
