@@ -105,10 +105,13 @@ def judge_code(mmdet_result, image_color, image_name, classes):
 
     # filter confidence
     all = classes.copy()
-    all.remove('pixel')
     det_df = filter_code(det_df, all, 0.1)
     det_df = filter_code(det_df, 'pixel', 0.3)
     det_df = filter_code(det_df, 'CN', 0.4)
+    det_df = filter_code(det_df, 'LS1', 0.3)
+    det_df = filter_code(det_df, 'LS2', 0.3)
+    det_df = filter_code(det_df, 'JC', 0.2)
+    det_df = filter_code(det_df, 'F01', 0.2)
 
     # judge LA series
     det_df = count_code(det_df, 'JC', 2, 'LA02')
