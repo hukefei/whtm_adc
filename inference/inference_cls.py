@@ -1,4 +1,4 @@
-from rule.rule_21101 import default_rule
+from rule.rule_56A02 import default_rule
 import cv2
 import os, glob
 import pandas as pd
@@ -44,6 +44,10 @@ def inference_cls(result_file,
         main_code, bbox, score, img_ = default_rule(result, img, img_name, config, code_file, save_img)
         print(main_code, bbox, score)
 
+        save_path = os.path.join(img_save_path, gt_code, main_code)
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+
         if save_img:
             cv2.imwrite(os.path.join(img_save_path, img_name), img_)
 
@@ -61,20 +65,23 @@ def inference_cls(result_file,
 
 
 if __name__ == '__main__':
-    img_path = r'/data/sdv1/whtm/ddj/data/0326test/diandengji_0319_add/'
-    pkl_file = r'/data/sdv1/whtm/ddj/result/ovli_0331.pkl'
-    json_file = r'/data/sdv1/whtm/ddj/data/0320/rule.json'
-    code_file = r'/data/sdv1/whtm/ddj/data/0320/classes.txt'
-    output = r'/data/sdv1/whtm/ddj/result/0331/ovli_0331.xlsx'
-    img_save_path = r'/data/sdv1/whtm/ddj/result/0331/images'
+    imgs = glob.glob(r'/data/sdv1/whtm/56A02/val/total_val/*/*.jpg')
+    pkl_file = r'/data/sdv1/whtm/56A02/result/0724/val_result.pkl'
+    json_file = None
+    code_file = r'/data/sdv1/whtm/56A02/data/classes.txt'
+    output = r'/data/sdv1/whtm/56A02/result/0724/result'
+    img_save_path = r'/data/sdv1/whtm/56A02/result/0724/images/'
     # size_file = r'/data/sdv1/whtm/document/1GE02/1GE02_bt1_img_size.json'
     size_file = None
     if not os.path.exists(img_save_path):
         os.makedirs(img_save_path)
     # open config file
-    with open(json_file) as f:
-        config = json.load(f)
+    if json_file is not None:
+        with open(json_file) as f:
+            config = json.load(f)
+    else:
+        config = None
     with open(code_file) as f:
         codes = f.read().splitlines()
 
-    inference_cls(pkl_file, img_path, config, codes, output, img_save_path, save_img=True, size_file=size_file)
+    inference_cls(pkl_file, imgs, config, codes, output, img_save_path, save_img=True, size_file=size_file)

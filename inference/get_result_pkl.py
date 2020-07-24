@@ -36,8 +36,10 @@ def model_test(imgs,
 
 
 if __name__ == '__main__':
-    imgs = glob.glob('/data/sdv1/whtm/mask/data/0512/test/*.jpg')
-    cfg_file = '/data/sdv1/whtm/mask/config/mask_rcnn_r50_fpn_1x.py'
-    ckpt_file = '/data/sdv1/whtm/mask/workdir/0512-1/epoch_12.pth'
-    save_file = r'/data/sdv1/whtm/mask/result/0512/particle.pkl'
+    imgs = glob.glob('/data/sdv1/whtm/56A02/val/total_val/*/*.jpg')
+    cfg_file = '/data/sdv1/whtm/56A02/config/56A02_0724.py'
+    ckpt_file = '/data/sdv1/whtm/56A02/workdir/0724/epoch_12.pth'
+    save_file = r'/data/sdv1/whtm/56A02/result/0724/val_result.pkl'
+    if not os.path.exists(os.path.dirname(save_file)):
+        os.makedirs(os.path.dirname(save_file))
     results = model_test(imgs, cfg_file, ckpt_file, save_file)

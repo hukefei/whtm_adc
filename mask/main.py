@@ -44,7 +44,7 @@ def compose_nms(mmdet_result, classes):
     return mmdet_result
 
 
-def init_model(config, checkpoint, *args, **kwargs):
+def init_model(config, checkpoint, **kwargs):
     model = init_detector(config, checkpoint, **kwargs)
     return model
 
@@ -84,7 +84,7 @@ def model_test(result,
     output_bboxes.append(best_bboxes)
     for bbox in best_bboxes:
         coord = [round(i, 2) for i in bbox[:4]]
-        conf, category = bbox[4], codes[int(bbox[5]) - 1]
+        conf, category = round(bbox[4], 4), codes[int(bbox[5]) - 1]
         json_dict.append({'name': img_name, 'category': category, 'bbox': coord, 'score': conf, 'bbox_score': bbox[:5],
                           'xmin': coord[0], 'ymin': coord[1], 'xmax': coord[2], 'ymax': coord[3],
                           'ctx': (coord[0] + coord[2]) / 2, 'cty': (coord[1] + coord[3]) / 2,
@@ -132,7 +132,7 @@ def judge_code(mmdet_result, image_color, image_name, classes):
 
     # judge particle
     if ('KP' in det_df['category'].values) or ('PP' in det_df['category'].values) or (
-            'BP' in det_df['category'].values):
+            'BP' in det_df['category'].values) or ('F01' in det_df['category'].values):
         det_df, image_color = judge_particle(det_df, image_color, image_gray)
 
     # filter pixels
@@ -200,7 +200,8 @@ def judge_particle(det_df, image_color, image_gray):
 
     for i, bbox in enumerate(bboxes):
         for idx, row in det_df[
-            (det_df['category'] == 'KP') | (det_df['category'] == 'PP') | (det_df['category'] == 'BP')].iterrows():
+            (det_df['category'] == 'KP') | (det_df['category'] == 'PP') | (det_df['category'] == 'BP') \
+                | (det_df['category'] == 'F01')].iterrows():
             det_df.loc[idx, 'remark'].setdefault('covered', [])
             det_df.loc[idx, 'remark'].setdefault('iof', [])
             particle_bbox = row['bbox']
@@ -256,6 +257,14 @@ def judge_particle(det_df, image_color, image_gray):
     draw_size(image_color, bboxes, bbox_particle_size)
 
     # modify code
+    for idx, row in det_df[det_df['category'] == 'F01'].iterrows():
+        iof = row['remark']['iof']
+        covered = row['remark']['covered']
+        covered = np.array(covered)
+        if len(iof) < 3 or np.sum(covered >= 0.01) < 3:
+            print('F01 -> PP')
+            det_df.loc[idx, 'category'] = 'PP'
+
     for idx, row in det_df[det_df['category'] == 'KP'].iterrows():
         iof = row['remark']['iof']
         size = row['size']
@@ -376,9 +385,9 @@ def draw_size(img, bboxes, sizes, font_size=1):
     assert len(bboxes) == len(sizes)
     for i, bbox in enumerate(bboxes):
         size = sizes[i]
-        cv2.putText(img, f'size: {str(np.round(size, 2))}', (int(bbox[0]), int(bbox[3])),
+        cv2.putText(img, f'size: {str(np.round(size, 3))}', (int(bbox[0]), int(bbox[3])),
                     cv2.FONT_HERSHEY_SIMPLEX, font_size, (255, 0, 0), 2)
-    cv2.putText(img, f'total size: {str(np.round(sum(sizes), 2))}', (0, 50),
+    cv2.putText(img, f'total size: {str(np.round(sum(sizes), 3))}', (0, 50),
                 cv2.FONT_HERSHEY_SIMPLEX, font_size*2, (0, 0, 255), 2)
 
 
@@ -542,7 +551,7 @@ def check_contact(bbox1, bbox2, sigma=0.01):
         return False
 
 
-def filter_code(df, code, thr=1, replace=None):
+def filter_code(df, code, thr=1.0, replace=None):
     if isinstance(code, list):
         for c in code:
             df = filter_code(df, c, thr, replace)

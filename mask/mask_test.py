@@ -9,7 +9,7 @@ import datetime
 path = r'/data/sdv1/whtm/mask/model/FMM_color_0715/'
 opt = process(path)
 img_path = r'/data/sdv1/whtm/mask/test/FMM_color_test/L1AMI200/'
-imgs = glob.glob(os.path.join(img_path, 'F01/*/*.jpg'))[:300]
+imgs = glob.glob(os.path.join(img_path, 'PO02/*/*.jpg'))[:300]
 # imgs = [os.path.join(img_path, '*/*/SC655FH1HAERT202_-285424_-656-5246_before.jpg')]
 progressbar = tqdm.tqdm(imgs)
 dateTime_p = datetime.datetime.now()
