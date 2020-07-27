@@ -6,13 +6,14 @@ import json
 import pickle
 import cv2
 
-PRIO_WEIGHT = 0.9
-PRIO_LIST = []
+PRIO_WEIGHT = 0.8
+PRIO_LIST = ['MKL1', 'MPLO', 'MPTO', 'MRM3', 'AZ02', 'MBU1', 'MLS1', 'MPL1', 'WBU1', 'IRP1', 'MDR1', 'MRM2',
+             'PFBA', 'AZ06', 'DAL1', 'IDT1', 'IRMR', 'ISC3', 'TPT1', 'IFB1', 'MDF1', 'FALSE']
 FALSE_NAME = 'FALSE'
 
 
 def show_and_save_images(img_path, img_name, bboxes, codes, out_dir=None):
-    img = cv2.imread(os.path.join(img_path, img_name))
+    img = cv2.imread(img_path)
     for i, bbox in enumerate(bboxes):
         bbox = np.array(bbox)
         bbox_int = bbox[:4].astype(np.int32)
@@ -29,10 +30,14 @@ def show_and_save_images(img_path, img_name, bboxes, codes, out_dir=None):
     return img
 
 
-def prio_check(prio_lst, code_lst):
+def prio_check(prio_lst, code_lst, score_lst=None):
     idx_lst = []
     for code in code_lst:
-        assert code in prio_lst, '{} should be in priority file'.format(code)
+        # assert code in prio_lst, '{} should be in priority file'.format(code)
+        if code not in prio_lst:
+            print('{} not in priority list, using best score result'.format(code))
+            final_code = code_lst[np.argmax(score_lst)]
+            return final_code
         idx = prio_lst.index(code)
         idx_lst.append(idx)
     final_code = prio_lst[min(idx_lst)]
@@ -108,13 +113,19 @@ def default_rule(det_lst, img_path, img_name, config, codes, draw_img=False, **k
     det_df = pd.DataFrame(json_dict, columns=['name', 'category', 'bbox', 'score', 'bbox_score',
                                               'xmin', 'ymin', 'xmax', 'ymax', 'ctx', 'cty', 'size'])
 
-    prio_weight = PRIO_WEIGHT
-    prio_lst = PRIO_LIST
-    false_name = FALSE_NAME
-
     det_df = filter_code(det_df, 'MPL', 1.0, 'MPLO')
+    det_df = filter_code(det_df, 'IRMR', 0.9)
+    det_df = filter_code(det_df, 'IDT1', 0.9)
+    det_df = filter_code(det_df, 'DRMT', 0.9)
+    det_df = filter_code(det_df, 'DAL1', 0.4)
+    det_df = filter_code(det_df, 'ISC3', 0.4)
+    det_df = filter_code(det_df, 'MDF1', 0.4)
+    det_df = filter_code(det_df, 'MDR1', 0.4)
+    det_df = filter_code(det_df, 'WBU1', 0.3)
+    det_df = filter_code(det_df, 'PFBA', 0.3)
+    det_df = filter_code(det_df, 'TPT1', 0.1)
 
-    code, bbox, score = prio_judge(det_df, prio_weight=prio_weight, prio_lst=prio_lst, false_name=false_name)
+    code, bbox, score = prio_judge(det_df, prio_weight=PRIO_WEIGHT, prio_lst=PRIO_LIST, false_name=FALSE_NAME)
 
     # draw images
     if draw_img:
@@ -133,15 +144,15 @@ def prio_judge(det_df, **kwargs):
     if len(det_df) != 0:
         Max_conf = det_df['score'].values.max()
         prio_thr = Max_conf * kwargs.get('prio_weight')
-        filtered_final = det_df[det_df['score'] >= prio_thr]
+        det_df = det_df[det_df['score'] >= prio_thr]
 
         if kwargs.get('prio_lst') is None or kwargs.get('prio_lst') == []:
             final_code = det_df.loc[det_df['score'].argmax(), 'category']
         else:
-            final_code = prio_check(kwargs.get('prio_lst'), list(filtered_final['category']))
-        best_score = filtered_final.loc[filtered_final['category'] == final_code, 'score'].max()
-        best_idx = filtered_final.loc[filtered_final['category'] == final_code, 'score'].argmax()
-        best_bbox = filtered_final.loc[best_idx, 'bbox']
+            final_code = prio_check(kwargs.get('prio_lst'), list(det_df['category']), list(det_df['score']))
+        best_score = det_df.loc[det_df['category'] == final_code, 'score'].max()
+        best_idx = det_df.loc[det_df['category'] == final_code, 'score'].argmax()
+        best_bbox = det_df.loc[best_idx, 'bbox']
     else:
         final_code = kwargs.get('false_name')
         best_bbox = []

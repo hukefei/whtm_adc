@@ -7,10 +7,10 @@ import tqdm
 import itertools
 import pandas as pd
 
-PRIO_ORDER = ['CN', 'E01', 'F01', 'PO01', 'E02', 'LA03', 'LA02', 'unknown', 'K02', 'PO02', 'PO03', 'PN02', 'E03', 'B02',
+PRIO_ORDER = ['CN', 'E01', 'PO01', 'F01', 'E02', 'unknown', 'K02', 'LA03', 'LA02', 'PO02', 'PO03', 'PN02', 'E03', 'B02',
               'FALSE']
 PRIO_WEIGHT = 0.8
-KILLER = ['CN', 'E01', 'F01', 'PO01']
+KILLER = ['CN', 'E01', 'PO01', 'F01']
 
 
 def predict(img, **kwargs):
@@ -26,6 +26,7 @@ def predict(img, **kwargs):
 
     return code, bbox, score, image
 
+
 def compose_nms(mmdet_result, classes):
     nonkiller = classes.copy()
     nonkiller.remove('F01')
@@ -33,7 +34,8 @@ def compose_nms(mmdet_result, classes):
     nonkiller.remove('LK')
     nonkiller.remove('CN')
     nonkiller.remove('pixel')
-    pair = [(['B02', 'E03'], 0.5, 'iof-h'), (['E03', 'BP'], 0.5, 'iof-l'), (nonkiller, 0.7, 'iou')]
+    pair = [(['B02', 'E03'], 0.5, 'iof-h'), (['E03', 'BP'], 0.5, 'iof-l'), (['BP', 'PP'], 0.7, 'iou'),
+            (['BP', 'B02'], 0.5, 'iou'), (['KP', 'PP'], 0.7, 'iou')]
     for p in pair:
         c_l, thr, mode = p
         index_list = [classes.index(c) for c in c_l]
@@ -201,7 +203,7 @@ def judge_particle(det_df, image_color, image_gray):
     for i, bbox in enumerate(bboxes):
         for idx, row in det_df[
             (det_df['category'] == 'KP') | (det_df['category'] == 'PP') | (det_df['category'] == 'BP') \
-                | (det_df['category'] == 'F01')].iterrows():
+            | (det_df['category'] == 'F01')].iterrows():
             det_df.loc[idx, 'remark'].setdefault('covered', [])
             det_df.loc[idx, 'remark'].setdefault('iof', [])
             particle_bbox = row['bbox']
@@ -388,7 +390,7 @@ def draw_size(img, bboxes, sizes, font_size=1):
         cv2.putText(img, f'size: {str(np.round(size, 3))}', (int(bbox[0]), int(bbox[3])),
                     cv2.FONT_HERSHEY_SIMPLEX, font_size, (255, 0, 0), 2)
     cv2.putText(img, f'total size: {str(np.round(sum(sizes), 3))}', (0, 50),
-                cv2.FONT_HERSHEY_SIMPLEX, font_size*2, (0, 0, 255), 2)
+                cv2.FONT_HERSHEY_SIMPLEX, font_size * 2, (0, 0, 255), 2)
 
 
 def generate_pixels(img_c, anchor, pixels):
@@ -488,6 +490,7 @@ def get_threshold(image_gray, pixels):
         thr_lst.append(thr)
     thr = np.mean(thr_lst)
     return thr
+
 
 def draw_pixels(bboxes, image_color):
     for b in bboxes:
@@ -591,6 +594,14 @@ def check_code_exist(df, code):
 
 def final_judge(det_df, prio_order=None, prio_weight=0.5):
     if len(det_df) != 0:
+        # judge FALSE
+        if 'FALSE' in det_df.category.values:
+            best_score = det_df.loc[det_df['category'] == 'FALSE', 'score'].max()
+            if best_score >= 0.95:
+                final_code = 'FALSE'
+                return final_code, [], best_score
+
+        # judge killer
         for killer in KILLER:
             if killer in det_df.category.values:
                 final_code = killer

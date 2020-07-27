@@ -120,19 +120,19 @@ def write_xmls(foldername, gt_dict, num_raw_imgs, save_dir, code_dict):
 
 
 if __name__ == '__main__':
-    NUM_CLASSES = 34
+    NUM_CLASSES = 24
     p = np.zeros(NUM_CLASSES)
-    p[22] = 1
+    p[-2] = 1
     HEIGHT = 1024
     WIDTH = 1024
 
-    gt_json = r'E:\szl\final\all.json'
-    defect_dir = r'E:\szl\final\images'
-    normal_dir = r'E:\szl\0505_false\PAD'
-    new_json = r'E:\szl\final\cutout_all.json'
-    save_dir = r'E:\szl\final\cutout_images'
-    xml_dir = r'E:\szl\final\cutout_xmls'
-    code_file = r'E:\szl\final\classes.txt'
+    gt_json = r'F:\WHTM\TPOT\data\total\train.json'
+    defect_dir = r'F:\WHTM\TPOT\data\total\images'
+    normal_dir = r'F:\WHTM\TPOT\data\0727\original'
+    new_json = r'F:\WHTM\TPOT\data\0727\cutout_all.json'
+    save_dir = r'F:\WHTM\TPOT\data\0727\cutout_images'
+    xml_dir = r'F:\WHTM\TPOT\data\0727\cutout_xmls'
+    code_file = r'F:\WHTM\TPOT\data\total\classes.txt'
 
 
 
@@ -145,7 +145,7 @@ if __name__ == '__main__':
     num_raw_imgs, gt_dict, gt_lst = get_gt_boxes(gt_json)
     print("\nStarting cutout...")
     gt_dict = cutout(gt_dict, gt_lst, defect_dir,
-                     normal_dir, save_dir, max_per_img=3, mix_ratio=0., repeated=1)
+                     normal_dir, save_dir, max_per_img=2, mix_ratio=0., repeated=1)
 
     print("\nWriting new train json...")
     write_new_json(gt_dict, new_json)

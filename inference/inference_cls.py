@@ -13,11 +13,8 @@ def inference_cls(result_file,
                   config,
                   code_file,
                   output,
-                  img_save_path,
                   size_file=None,
                   save_img=False):
-    if not os.path.exists(img_save_path):
-        os.makedirs(img_save_path)
 
     with open(result_file, 'rb') as f:
         results = pickle.load(f)
@@ -44,18 +41,19 @@ def inference_cls(result_file,
         main_code, bbox, score, img_ = default_rule(result, img, img_name, config, code_file, save_img)
         print(main_code, bbox, score)
 
-        save_path = os.path.join(img_save_path, gt_code, main_code)
-        if not os.path.exists(save_path):
-            os.makedirs(save_path)
+        # save_path = os.path.join(img_save_path, gt_code, main_code)
+        # if not os.path.exists(save_path):
+        #     os.makedirs(save_path)
 
-        if save_img:
-            cv2.imwrite(os.path.join(img_save_path, img_name), img_)
+        # if save_img:
+        #     cv2.imwrite(os.path.join(img_save_path, img_name), img_)
 
         if main_code != gt_code:
             save_path = os.path.join(output, gt_code, main_code)
             if not os.path.exists(save_path):
                 os.makedirs(save_path)
-            shutil.copy(img, os.path.join(save_path, img_name))
+            # shutil.copy(img, os.path.join(save_path, img_name))
+            cv2.imwrite(os.path.join(save_path, img_name), img_)
         cls_result_lst.append({'image name': img_name, 'pred code': main_code, 'defect score': score, 'oic code': gt_code})
 
 
@@ -69,12 +67,12 @@ if __name__ == '__main__':
     pkl_file = r'/data/sdv1/whtm/56A02/result/0724/val_result.pkl'
     json_file = None
     code_file = r'/data/sdv1/whtm/56A02/data/classes.txt'
-    output = r'/data/sdv1/whtm/56A02/result/0724/result'
-    img_save_path = r'/data/sdv1/whtm/56A02/result/0724/images/'
+    output = r'/data/sdv1/whtm/56A02/result/0727/result'
+    # img_save_path = r'/data/sdv1/whtm/56A02/result/0727/images/'
     # size_file = r'/data/sdv1/whtm/document/1GE02/1GE02_bt1_img_size.json'
     size_file = None
-    if not os.path.exists(img_save_path):
-        os.makedirs(img_save_path)
+    # if not os.path.exists(img_save_path):
+    #     os.makedirs(img_save_path)
     # open config file
     if json_file is not None:
         with open(json_file) as f:
@@ -84,4 +82,4 @@ if __name__ == '__main__':
     with open(code_file) as f:
         codes = f.read().splitlines()
 
-    inference_cls(pkl_file, imgs, config, codes, output, img_save_path, save_img=True, size_file=size_file)
+    inference_cls(pkl_file, imgs, config, codes, output, save_img=True, size_file=size_file)
