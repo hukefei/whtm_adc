@@ -6,15 +6,15 @@ import pandas as pd
 import datetime
 
 
-path = r'/data/sdv1/whtm/mask/model/FMM_color_0715/'
+path = r'/data/sdv1/whtm/mask/model/FMM_color_0730/'
 opt = process(path)
-img_path = r'/data/sdv1/whtm/mask/test/0724/'
-imgs = glob.glob(os.path.join(img_path, '*.jpg'))
+img_path = r'/data/sdv1/whtm/mask/test/0723/FMM_REVIEW/'
+imgs = glob.glob(os.path.join(img_path, '*/PO01_2.jpg'))
 # imgs = [os.path.join(img_path, '*/*/SC655FH1HAERT202_-285424_-656-5246_before.jpg')]
 progressbar = tqdm.tqdm(imgs)
 dateTime_p = datetime.datetime.now()
 str_p = datetime.datetime.strftime(dateTime_p, '%m%d%H%M%S')
-save_dir = r'/data/sdv1/whtm/mask/result/0724_{}'.format(str_p)
+save_dir = r'/data/sdv1/whtm/mask/result/0730_val_{}'.format(str_p)
 save_correct_image = False
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)

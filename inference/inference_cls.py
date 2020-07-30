@@ -64,10 +64,10 @@ def inference_cls(result_file,
 
 if __name__ == '__main__':
     imgs = glob.glob(r'/data/sdv1/whtm/56A02/val/total_val/*/*.jpg')
-    pkl_file = r'/data/sdv1/whtm/56A02/result/0724/val_result.pkl'
+    pkl_file = r'/data/sdv1/whtm/56A02/result/0729/val_result.pkl'
     json_file = None
     code_file = r'/data/sdv1/whtm/56A02/data/classes.txt'
-    output = r'/data/sdv1/whtm/56A02/result/0727/result'
+    output = r'/data/sdv1/whtm/56A02/result/0729/result'
     # img_save_path = r'/data/sdv1/whtm/56A02/result/0727/images/'
     # size_file = r'/data/sdv1/whtm/document/1GE02/1GE02_bt1_img_size.json'
     size_file = None

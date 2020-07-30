@@ -9,8 +9,8 @@ import pandas as pd
 
 PRIO_ORDER = ['CN', 'E01', 'PO01', 'F01', 'E02', 'unknown', 'K02', 'LA03', 'LA02', 'PO02', 'PO03', 'PN02', 'E03', 'B02',
               'FALSE']
-PRIO_WEIGHT = 0.8
-KILLER = ['CN', 'E01', 'PO01', 'F01']
+PRIO_WEIGHT = 0.6
+KILLER = ['CN', 'E01', 'PO01', 'F01', 'K02', 'LA03', 'LA02']
 
 
 def predict(img, **kwargs):
@@ -28,14 +28,8 @@ def predict(img, **kwargs):
 
 
 def compose_nms(mmdet_result, classes):
-    nonkiller = classes.copy()
-    nonkiller.remove('F01')
-    nonkiller.remove('DK')
-    nonkiller.remove('LK')
-    nonkiller.remove('CN')
-    nonkiller.remove('pixel')
     pair = [(['B02', 'E03'], 0.5, 'iof-h'), (['E03', 'BP'], 0.5, 'iof-l'), (['BP', 'PP'], 0.7, 'iou'),
-            (['BP', 'B02'], 0.5, 'iou'), (['KP', 'PP'], 0.7, 'iou')]
+            (['BP', 'B02'], 0.5, 'iou'), (['KP', 'PP'], 0.7, 'iou'), (['CN', 'LA02', 'LA03'], 0.7, 'iou')]
     for p in pair:
         c_l, thr, mode = p
         index_list = [classes.index(c) for c in c_l]
@@ -110,15 +104,15 @@ def judge_code(mmdet_result, image_color, image_name, classes):
     det_df = filter_code(det_df, all, 0.1)
     det_df = filter_code(det_df, 'pixel', 0.3)
     det_df = filter_code(det_df, 'CN', 0.4)
-    det_df = filter_code(det_df, 'LS1', 0.3)
-    det_df = filter_code(det_df, 'LS2', 0.3)
+    det_df = filter_code(det_df, 'LA02', 0.2)
+    det_df = filter_code(det_df, 'LA03', 0.2)
     det_df = filter_code(det_df, 'JC', 0.2)
     det_df = filter_code(det_df, 'F01', 0.2)
 
     # judge LA series
     det_df = count_code(det_df, 'JC', 2, 'LA02')
-    det_df = filter_code(det_df, 'LS2', 1, 'LA02')
-    det_df = filter_code(det_df, 'LS1', 1, 'LA03')
+    # det_df = filter_code(det_df, 'LS2', 1, 'LA02')
+    # det_df = filter_code(det_df, 'LS1', 1, 'LA03')
 
     # judge short(E01/E02)
     count = judge_short_count(det_df)
@@ -597,7 +591,7 @@ def final_judge(det_df, prio_order=None, prio_weight=0.5):
         # judge FALSE
         if 'FALSE' in det_df.category.values:
             best_score = det_df.loc[det_df['category'] == 'FALSE', 'score'].max()
-            if best_score >= 0.95:
+            if best_score >= 0.90:
                 final_code = 'FALSE'
                 return final_code, [], best_score
 

@@ -10,13 +10,13 @@ from xml.etree import ElementTree as ET
 import glob
 
 def main():
-    path = r'/data/sdv1/whtm/mask/model/FMM_color_0701/'
+    path = r'/data/sdv1/whtm/mask/model/FMM_color_0715/'
     opt = process(path)
-    img_path = r'/data/sdv1/whtm/mask/data/0707/images'
-    ann_path = r'/data/sdv1/whtm/mask/data/0707/annotations'
+    img_path = r'/data/sdv1/whtm/mask/data/0730/add/originals/'
+    ann_path = r'/data/sdv1/whtm/mask/data/0730/add/annotations'
     imgs = glob.glob(os.path.join(img_path, '*.jpg'))
     progressbar = tqdm.tqdm(imgs)
-    save_dir = r'/data/sdv1/whtm/mask/data/0707/add_pixels/'
+    save_dir = r'/data/sdv1/whtm/mask/data/0730/add/add_pixels/'
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
@@ -24,9 +24,10 @@ def main():
         image_name = img.split('/')[-1]
         ann_name = image_name.replace('jpg', 'xml')
         ann_ = os.path.join(ann_path, ann_name)
-        tree = add_(img, ann_, **opt)
-        if tree is not None:
-            tree.write(os.path.join(save_dir, ann_name))
+        if os.path.exists(ann_):
+            tree = add_(img, ann_, **opt)
+            if tree is not None:
+                tree.write(os.path.join(save_dir, ann_name))
 
 
 def add_(img, ann, **kwargs):

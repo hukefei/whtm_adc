@@ -9,8 +9,6 @@ from tools.pascal_voc_io import PascalVocWriter
 from utils.Code_dictionary import CodeDictionary
 
 
-
-
 def get_gt_boxes(json_file):
     with open(json_file, 'r') as f:
         data = json.load(f)
@@ -19,10 +17,13 @@ def get_gt_boxes(json_file):
     annotations = data['annotations']
 
     img_names = []
+    img_shape_dict = {}
     for img in images:
         img_names.append(img['file_name'])
+        img_shape_dict.setdefault(img['file_name'], (img['height'], img['width']))
 
     gt_dict = {}
+
     gt_lst = []
     for anno in annotations:
         img_id = anno['image_id']
@@ -34,11 +35,12 @@ def get_gt_boxes(json_file):
 
     print('\nNumber of Images: ', len(gt_dict))
     print('\nNumber of GroundTruths: ', len(gt_lst))
-    return len(gt_dict), gt_dict, gt_lst
+    return len(gt_dict), gt_dict, gt_lst, img_shape_dict
 
 
 def cutout(gt_dict,
            gt_lst,
+           img_shape_dict,
            defect_dir,
            normal_dir,
            save_dir,
@@ -54,11 +56,13 @@ def cutout(gt_dict,
             img_name_epoch = str(epoch) + '_' + img_name
             print(i, img_name_epoch)
             normal_img = cv2.imread(os.path.join(normal_dir, img_name))
+            height, width, _ = normal_img.shape
+            img_shape_dict[img_name_epoch] = (height, width)
             defects = random.choices(gt_lst, weights=p_lst,
                                      k=random.randint(1, max_per_img))
             # first big, then small, to prevent big defects from covering small one
             defects = sorted(defects, key=(lambda x: x[-1] * x[-2]), reverse=True)
-            if defects[0][-1] * defects[0][-2] > HEIGHT * WIDTH / 4:
+            if defects[0][-1] * defects[0][-2] > height * width / 4:
                 defects = [defects[0]]
 
             total_bbox = []
@@ -68,8 +72,8 @@ def cutout(gt_dict,
                 x, y, w, h = list(map(int, det[2:]))
                 defect = defect_img[y:y + h, x:x + w, :]
 
-                xmin = random.randint(0, WIDTH - w)
-                ymin = random.randint(0, HEIGHT - h)
+                xmin = random.randint(0, width - w)
+                ymin = random.randint(0, height - h)
                 xmax = xmin + w
                 ymax = ymin + h
                 normal_img[ymin:ymax, xmin:xmax, :] = \
@@ -80,15 +84,18 @@ def cutout(gt_dict,
             gt_dict[img_name_epoch] = total_bbox
 
             cv2.imwrite(os.path.join(save_dir, img_name_epoch), normal_img)
-    return gt_dict
+    return gt_dict, img_shape_dict
 
 
-def write_new_json(gt_dict, new_json):
+def write_new_json(gt_dict,
+                   img_shape_dict,
+                   new_json):
     json_dict = {"images": [], "type": "instances", "annotations": [], "categories": []}
     bnd_id = 1
     for i, (name, anno) in enumerate(gt_dict.items()):
         img_id = i + 1
-        image = {'file_name': name, 'height': HEIGHT, 'width': WIDTH, 'id': img_id}
+        height, width = img_shape_dict.get(name)
+        image = {'file_name': name, 'height': height, 'width': width, 'id': img_id}
         json_dict['images'].append(image)
 
         for box in anno:
@@ -105,12 +112,18 @@ def write_new_json(gt_dict, new_json):
         json.dump(json_dict, f, indent=4)
 
 
-def write_xmls(foldername, gt_dict, num_raw_imgs, save_dir, code_dict):
+def write_xmls(foldername,
+               gt_dict,
+               img_shape_dict,
+               num_raw_imgs,
+               save_dir,
+               code_dict):
     imgs = list(gt_dict.keys())
     annotations = list(gt_dict.values())
-    imgSize = [HEIGHT, WIDTH, 3]
     for i in range(num_raw_imgs, len(imgs)):
         filename = imgs[i]
+        height, width = img_shape_dict.get(filename)
+        imgSize = [height, width, 3]
         # print(i, filename)
         localImgPath = os.path.join(foldername, filename)
         XMLWriter = PascalVocWriter(foldername, filename, imgSize, localImgPath)
@@ -123,18 +136,14 @@ if __name__ == '__main__':
     NUM_CLASSES = 24
     p = np.zeros(NUM_CLASSES)
     p[-2] = 1
-    HEIGHT = 1024
-    WIDTH = 1024
 
-    gt_json = r'F:\WHTM\TPOT\data\total\train.json'
-    defect_dir = r'F:\WHTM\TPOT\data\total\images'
-    normal_dir = r'F:\WHTM\TPOT\data\0727\original'
-    new_json = r'F:\WHTM\TPOT\data\0727\cutout_all.json'
-    save_dir = r'F:\WHTM\TPOT\data\0727\cutout_images'
-    xml_dir = r'F:\WHTM\TPOT\data\0727\cutout_xmls'
-    code_file = r'F:\WHTM\TPOT\data\total\classes.txt'
-
-
+    gt_json = r'F:\WHTM\56A02\data\total\train.json'
+    defect_dir = r'F:\WHTM\56A02\data\total\images'
+    normal_dir = r'F:\WHTM\56A02\data\0728\FALSE_original'
+    new_json = r'F:\WHTM\56A02\data\0728\cutout_all.json'
+    save_dir = r'F:\WHTM\56A02\data\0728\cutout_images'
+    xml_dir = r'F:\WHTM\56A02\data\0728\cutout_xmls'
+    code_file = r'F:\WHTM\56A02\data\total\classes.txt'
 
     code = CodeDictionary(code_file)
 
@@ -142,17 +151,17 @@ if __name__ == '__main__':
         shutil.rmtree(save_dir)
     os.makedirs(save_dir)
 
-    num_raw_imgs, gt_dict, gt_lst = get_gt_boxes(gt_json)
+    num_raw_imgs, gt_dict, gt_lst, img_shape_dict = get_gt_boxes(gt_json)
     print("\nStarting cutout...")
-    gt_dict = cutout(gt_dict, gt_lst, defect_dir,
-                     normal_dir, save_dir, max_per_img=2, mix_ratio=0., repeated=1)
+    gt_dict, img_shape_dict = cutout(gt_dict, gt_lst, img_shape_dict, defect_dir,
+                                     normal_dir, save_dir, max_per_img=1, mix_ratio=0., repeated=1)
 
     print("\nWriting new train json...")
-    write_new_json(gt_dict, new_json)
+    write_new_json(gt_dict, img_shape_dict, new_json)
 
     print("\nWriting cutout xmls...")
 
     if os.path.exists(xml_dir):
         shutil.rmtree(xml_dir)
     os.makedirs(xml_dir)
-    write_xmls(save_dir, gt_dict, num_raw_imgs, xml_dir, code)
+    write_xmls(save_dir, gt_dict, img_shape_dict, num_raw_imgs, xml_dir, code)

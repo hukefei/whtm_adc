@@ -124,6 +124,13 @@ def default_rule(det_lst, img_path, img_name, config, codes, draw_img=False, **k
     det_df = filter_code(det_df, 'WBU1', 0.3)
     det_df = filter_code(det_df, 'PFBA', 0.3)
     det_df = filter_code(det_df, 'TPT1', 0.1)
+    det_df = filter_code(det_df, 'MPL1', 0.2)
+    det_df = filter_code(det_df, 'MPLO', 0.2)
+    det_df = filter_code(det_df, 'MRM2', 0.2)
+    det_df = filter_code(det_df, 'MRM3', 0.2)
+    det_df = filter_code(det_df, 'MLS1', 0.2)
+    det_df = filter_code(det_df, 'MKL1', 0.2)
+
 
     code, bbox, score = prio_judge(det_df, prio_weight=PRIO_WEIGHT, prio_lst=PRIO_LIST, false_name=FALSE_NAME)
 
