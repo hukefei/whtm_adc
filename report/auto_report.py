@@ -3,7 +3,7 @@ import pandas as pd
 import os
 
 MAPPING = {
-    'auto code': 'AUTO_CODE',
+    'auto code': 'AOTU_CODE',
     'manu code': 'MANUAL_CODE',
     'confidence': 'CONFIDENCE',
     'auto flag': 'AUTO_FLAG',
@@ -168,7 +168,7 @@ class AutoReport(object):
 
 
 if __name__ == '__main__':
-    data_file = r'C:\Users\root\Desktop\mask原始数据.xlsx'
-    save_file = r'C:\Users\root\Desktop\auto_report.xlsx'
+    data_file = r'C:\Users\root\Desktop\121A4(1).xlsx'
+    save_file = r'C:\Users\root\Desktop\auto_report_121A4(1).xlsx'
     ar = AutoReport(data_file)
     ar.generate_report(save_file)

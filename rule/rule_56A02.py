@@ -5,25 +5,33 @@ import pandas as pd
 import json
 import pickle
 import cv2
+import random
 
-PRIO_WEIGHT = 0.8
+PRIO_WEIGHT = 0.6
 PRIO_LIST = ['MKL1', 'MPLO', 'MPTO', 'MRM3', 'AZ02', 'MBU1', 'MLS1', 'MPL1', 'WBU1', 'IRP1', 'MDR1', 'MRM2',
              'PFBA', 'AZ06', 'DAL1', 'IDT1', 'IRMR', 'ISC3', 'TPT1', 'IFB1', 'MDF1', 'FALSE']
 FALSE_NAME = 'FALSE'
 
 
-def show_and_save_images(img_path, img_name, bboxes, codes, out_dir=None):
+def show_and_save_images(img_path, img_name, bboxes, codes, out_dir=None, random_color=False):
     img = cv2.imread(img_path)
+    cor_l = 0
+    color = (0, 0, 255)
     for i, bbox in enumerate(bboxes):
+        if random_color:
+            color = tuple([random.randint(125, 255) for _ in range(3)])
         bbox = np.array(bbox)
         bbox_int = bbox[:4].astype(np.int32)
         left_top = (bbox_int[0], bbox_int[1])
         right_bottom = (bbox_int[2], bbox_int[3])
         code = codes[i]
         label_txt = code + ': ' + str(round(bbox[4], 2))
-        cv2.rectangle(img, left_top, right_bottom, (0, 0, 255), 1)
-        cv2.putText(img, label_txt, (bbox_int[0], max(bbox_int[1] - 2, 0)),
-                    cv2.FONT_HERSHEY_COMPLEX, 1, (0, 0, 255), 2)
+        cv2.rectangle(img, left_top, right_bottom, color, 1)
+        cor_l += 30
+        cv2.putText(img, label_txt, (0, cor_l),
+                    cv2.FONT_HERSHEY_COMPLEX, 1, color, 2)
+        cv2.line(img, (0, cor_l), (bbox_int[0], bbox_int[1]), color)
+
     if out_dir is not None:
         cv2.imwrite(os.path.join(out_dir, img_name), img)
 
@@ -50,6 +58,14 @@ def filter_code(df, code, thr, replace=None):
         df = df.drop(index=check_code.index)
     else:
         df.loc[check_code.index, 'category'] = replace
+    return df
+
+
+def judge_size(df, code, code1, code2, size, thr):
+    if size >= thr:
+        df = filter_code(df, code, 1.0, code2)
+    else:
+        df = filter_code(df, code, 1.0, code1)
     return df
 
 
@@ -108,18 +124,24 @@ def default_rule(det_lst, img_path, img_name, config, codes, draw_img=False, **k
     if unit_id == 'A1AOI800':
         size = max(size, sizeX, sizeY)
 
+    img = cv2.imread(img_path)
+    if img is None:
+        raise ValueError
+
+    h, w, c = img.shape
+
     # analyse pkl file to get det result
     json_dict = model_test(det_lst, img_name, codes)
     det_df = pd.DataFrame(json_dict, columns=['name', 'category', 'bbox', 'score', 'bbox_score',
                                               'xmin', 'ymin', 'xmax', 'ymax', 'ctx', 'cty', 'size'])
 
     det_df = filter_code(det_df, 'MPL', 1.0, 'MPLO')
-    det_df = filter_code(det_df, 'IRMR', 0.9)
-    det_df = filter_code(det_df, 'IDT1', 0.9)
-    det_df = filter_code(det_df, 'DRMT', 0.9)
+    det_df = filter_code(det_df, 'IRMR', 0.6)
+    det_df = filter_code(det_df, 'IDT1', 0.5)
+    det_df = filter_code(det_df, 'DRMT', 0.7)
     det_df = filter_code(det_df, 'DAL1', 0.4)
     det_df = filter_code(det_df, 'ISC3', 0.4)
-    det_df = filter_code(det_df, 'MDF1', 0.4)
+    det_df = filter_code(det_df, 'MDF1', 0.3)
     det_df = filter_code(det_df, 'MDR1', 0.4)
     det_df = filter_code(det_df, 'WBU1', 0.3)
     det_df = filter_code(det_df, 'PFBA', 0.3)
@@ -130,6 +152,36 @@ def default_rule(det_lst, img_path, img_name, config, codes, draw_img=False, **k
     det_df = filter_code(det_df, 'MRM3', 0.2)
     det_df = filter_code(det_df, 'MLS1', 0.2)
     det_df = filter_code(det_df, 'MKL1', 0.2)
+
+    # det_df = judge_size(det_df, 'TPT1', 'TPT1', 'MPTO', size, 100)
+    # det_df = judge_size(det_df, 'MPTO', 'TPT1', 'MPTO', size, 100)
+    # det_df = judge_size(det_df, 'MRM2', 'MRM2', 'MRM3', size, 100)
+    # det_df = judge_size(det_df, 'MRM3', 'MRM2', 'MRM3', size, 100)
+
+    for idx, row in det_df.iterrows():
+        if row['category'] == 'TPT1':
+            if size >= 100:
+                det_df.loc[idx, 'category'] = 'MPTO'
+
+        elif row['category'] == 'MPTO':
+            if size < 100 and row['size'] / (h * w) < 0.3:
+                det_df.loc[idx, 'category'] = 'TPT1'
+
+        elif row['category'] == 'MRM2':
+            if size >= 100:
+                det_df.loc[idx, 'category'] = 'MRM3'
+
+        elif row['category'] == 'MRM3':
+            if size < 100 and row['size'] / (h * w) < 0.3:
+                det_df.loc[idx, 'category'] = 'MRM2'
+
+        elif row['category'] == 'MPL1':
+            if (row['xmax'] - row['xmin']) / w >= 0.8 or (row['ymax'] - row['ymin']) / h >= 0.8:
+                det_df.loc[idx, 'category'] = 'MPLO'
+
+        elif row['category'] == 'MPLO':
+            if (row['xmax'] - row['xmin']) / w < 0.7 and (row['ymax'] - row['ymin']) / h < 0.7:
+                det_df.loc[idx, 'category'] = 'MPL1'
 
 
     code, bbox, score = prio_judge(det_df, prio_weight=PRIO_WEIGHT, prio_lst=PRIO_LIST, false_name=FALSE_NAME)

@@ -5,9 +5,9 @@ import os
 import pandas as pd
 import datetime
 
-path = r'/data/sdv1/whtm/CMM/model/0628_faster/'
+path = r'/data/sdv1/whtm/CMM/model/0804/'
 opt = process(path)
-img_path = r'/data/sdv1/whtm/CMM/test/CMM_TEST_ADD_0609/'
+img_path = r'/data/sdv1/whtm/CMM/test/672CMM/'
 imgs = glob.glob(os.path.join(img_path, '*/*.jpg'))
 # imgs = [os.path.join(img_path, '*/*/SC655FH1HAERT202_-285424_-656-5246_before.jpg')]
 progressbar = tqdm.tqdm(imgs)

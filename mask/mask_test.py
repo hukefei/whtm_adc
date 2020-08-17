@@ -8,8 +8,8 @@ import datetime
 
 path = r'/data/sdv1/whtm/mask/model/FMM_color_0730/'
 opt = process(path)
-img_path = r'/data/sdv1/whtm/mask/test/0723/FMM_REVIEW/'
-imgs = glob.glob(os.path.join(img_path, '*/PO01_2.jpg'))
+img_path = r'/data/sdv1/whtm/mask/test/FMM_color_test/'
+imgs = glob.glob(os.path.join(img_path, '*/*/*/*.jpg'))
 # imgs = [os.path.join(img_path, '*/*/SC655FH1HAERT202_-285424_-656-5246_before.jpg')]
 progressbar = tqdm.tqdm(imgs)
 dateTime_p = datetime.datetime.now()
@@ -24,7 +24,7 @@ correct = 0
 
 result = []
 for img in progressbar:
-    oic_code = img.split('/')[-2]
+    oic_code = img.split('/')[-3]
     image_name = img.split('/')[-1]
     code, bbox, score, image = predict(img, **opt)
     save_path = os.path.join(save_dir, oic_code, code)

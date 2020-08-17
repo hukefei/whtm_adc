@@ -36,10 +36,10 @@ def model_test(imgs,
 
 
 if __name__ == '__main__':
-    imgs = glob.glob('/data/sdv1/whtm/56A02/val/total_val/*/*.jpg')
-    cfg_file = '/data/sdv1/whtm/56A02/model/0729/config.py'
-    ckpt_file = '/data/sdv1/whtm/56A02/model/0729/model.pth'
-    save_file = r'/data/sdv1/whtm/56A02/result/0729/val_result.pkl'
+    imgs = glob.glob('/data/sdv1/whtm/56A02/test/test_split/*/*.jpg')
+    cfg_file = '/data/sdv1/whtm/56A02/model/0806/config.py'
+    ckpt_file = '/data/sdv1/whtm/56A02/model/0806/model.pth'
+    save_file = r'/data/sdv1/whtm/56A02/result/0806/test_split.pkl'
     if not os.path.exists(os.path.dirname(save_file)):
         os.makedirs(os.path.dirname(save_file))
     results = model_test(imgs, cfg_file, ckpt_file, save_file)

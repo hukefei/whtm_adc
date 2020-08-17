@@ -29,8 +29,8 @@ def check_annotations(file_path, codes=[]):
                     pass
 
 if __name__ == '__main__':
-    file_path = r'/data/sdv1/whtm/56A02/data/annotations'
-    code_file = r'/data/sdv1/whtm/56A02/data/classes.txt'
+    file_path = r'F:\WHTM\56A02\data\trainval\images'
+    code_file = r'F:\WHTM\56A02\data\trainval\classes.txt'
     with open(code_file) as f:
         site_code = f.read().splitlines()
     check_annotations(file_path, site_code)
